@@ -1,0 +1,105 @@
+:root {
+  color-scheme: light;
+  --bg: #f3f6fb;
+  --panel: #ffffff;
+  --text: #111827;
+  --muted: #4b5563;
+  --border: #d5deea;
+  --accent: #0f766e;
+  --accent-strong: #115e59;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 12px;
+  background: radial-gradient(circle at top, #e4efff 0, var(--bg) 38%, #eef4f8 100%);
+  color: var(--text);
+  font-family: "Avenir Next", "Segoe UI", sans-serif;
+}
+
+h1,
+h2 {
+  margin: 0;
+  letter-spacing: 0.01em;
+}
+
+h1 {
+  font-size: 1.1rem;
+}
+
+h2 {
+  font-size: 0.95rem;
+  margin-bottom: 8px;
+}
+
+label {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+textarea,
+select,
+input,
+button {
+  width: 100%;
+  font: inherit;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+}
+
+textarea,
+select,
+input {
+  background: #fff;
+  color: var(--text);
+  padding: 9px;
+}
+
+textarea {
+  resize: vertical;
+}
+
+button {
+  border: 0;
+  padding: 10px 12px;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+button.secondary {
+  background: #d7e5ee;
+  color: #1f2937;
+}
+
+button:hover {
+  background: var(--accent-strong);
+}
+
+button.secondary:hover {
+  background: #c8d9e6;
+}
+
+.status {
+  min-height: 1em;
+  margin: 0;
+  font-size: 0.8rem;
+  color: #0f766e;
+}
+
+.status.error {
+  color: #b91c1c;
+}
+
+.note {
+  font-size: 0.78rem;
+  color: var(--muted);
+  margin: 0;
+}

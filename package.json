@@ -1,0 +1,15 @@
+{
+  "name": "ai-cover-letter-extension",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "clean": "rm -rf dist",
+    "build": "npm run clean && tsc --project tsconfig.json && node scripts/copy-static.mjs",
+    "watch": "tsc --project tsconfig.json --watch"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.288",
+    "typescript": "^5.7.3"
+  }
+}

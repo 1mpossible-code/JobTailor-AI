@@ -1,0 +1,27 @@
+{
+  "manifest_version": 3,
+  "name": "AI Cover Letter Helper",
+  "description": "Extract a job description and generate a tailored cover letter from your saved resume.",
+  "version": "0.1.0",
+  "permissions": ["storage", "activeTab", "scripting"],
+  "host_permissions": [
+    "https://api.openai.com/*",
+    "https://api.anthropic.com/*"
+  ],
+  "action": {
+    "default_title": "AI Cover Letter Helper",
+    "default_popup": "popup/popup.html"
+  },
+  "options_page": "options/options.html",
+  "background": {
+    "service_worker": "background/service-worker.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content/extract.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

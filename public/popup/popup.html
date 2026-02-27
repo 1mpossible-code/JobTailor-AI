@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Cover Letter</title>
+    <link rel="stylesheet" href="../styles/common.css" />
+    <link rel="stylesheet" href="./popup.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <h1>Cover Letter</h1>
+
+      <div class="row compact">
+        <label for="provider">Provider</label>
+        <select id="provider">
+          <option value="anthropic">Anthropic</option>
+          <option value="openai">OpenAI</option>
+        </select>
+      </div>
+
+      <div class="row split">
+        <div>
+          <label for="tone">Tone</label>
+          <select id="tone">
+            <option value="professional">Professional</option>
+            <option value="confident">Confident</option>
+            <option value="friendly">Friendly</option>
+          </select>
+        </div>
+        <div>
+          <label for="length">Length</label>
+          <select id="length">
+            <option value="short">Short</option>
+            <option value="standard">Standard</option>
+            <option value="detailed">Detailed</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row">
+        <button id="extractBtn" class="secondary" type="button">Extract from page</button>
+      </div>
+
+      <div class="row">
+        <label for="jobText">Job description</label>
+        <textarea id="jobText" rows="7" placeholder="Paste job description or use extract."></textarea>
+      </div>
+
+      <div class="row actions">
+        <button id="generateBtn" type="button">Generate</button>
+        <button id="regenerateBtn" class="secondary" type="button">Regenerate</button>
+      </div>
+
+      <div class="row">
+        <label for="output">Cover letter</label>
+        <textarea id="output" rows="10" placeholder="Generated cover letter appears here."></textarea>
+      </div>
+
+      <div class="row actions">
+        <button id="copyBtn" class="secondary" type="button">Copy</button>
+        <a href="../options/options.html" target="_blank" rel="noreferrer">Settings</a>
+      </div>
+
+      <p id="status" class="status"></p>
+    </main>
+    <script type="module" src="./popup.js"></script>
+  </body>
+</html>

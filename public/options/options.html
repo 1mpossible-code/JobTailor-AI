@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Cover Letter Settings</title>
+    <link rel="stylesheet" href="../styles/common.css" />
+    <link rel="stylesheet" href="./options.css" />
+  </head>
+  <body>
+    <main class="shell wide">
+      <h1>Settings</h1>
+
+      <section>
+        <h2>Resume</h2>
+        <label for="resumeText">Resume text</label>
+        <textarea id="resumeText" rows="12" placeholder="Paste your full resume text."></textarea>
+        <div class="inline">
+          <label class="checkbox">
+            <input id="sessionOnlyResume" type="checkbox" />
+            Store resume for this browser session only
+          </label>
+          <button id="clearResumeBtn" class="secondary" type="button">Clear resume</button>
+        </div>
+      </section>
+
+      <section>
+        <h2>Provider + API Keys</h2>
+        <label for="provider">Default provider</label>
+        <select id="provider">
+          <option value="anthropic">Anthropic</option>
+          <option value="openai">OpenAI</option>
+        </select>
+
+        <label for="anthropicApiKey">Anthropic API key</label>
+        <input id="anthropicApiKey" type="password" autocomplete="off" placeholder="sk-ant-..." />
+
+        <label for="openaiApiKey">OpenAI API key</label>
+        <input id="openaiApiKey" type="password" autocomplete="off" placeholder="sk-..." />
+
+        <label for="anthropicModel">Anthropic model</label>
+        <input id="anthropicModel" type="text" placeholder="claude-3-5-haiku-latest" />
+
+        <label for="openaiModel">OpenAI model</label>
+        <input id="openaiModel" type="text" placeholder="gpt-4.1-mini" />
+      </section>
+
+      <section>
+        <h2>Defaults</h2>
+        <div class="split">
+          <div>
+            <label for="tone">Tone</label>
+            <select id="tone">
+              <option value="professional">Professional</option>
+              <option value="confident">Confident</option>
+              <option value="friendly">Friendly</option>
+            </select>
+          </div>
+          <div>
+            <label for="length">Length</label>
+            <select id="length">
+              <option value="short">Short</option>
+              <option value="standard">Standard</option>
+              <option value="detailed">Detailed</option>
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <div class="actions">
+        <button id="saveBtn" type="button">Save settings</button>
+      </div>
+
+      <p id="status" class="status"></p>
+      <p class="note">Your API keys and resume are stored only in this browser profile via Chrome extension storage.</p>
+    </main>
+    <script type="module" src="./options.js"></script>
+  </body>
+</html>

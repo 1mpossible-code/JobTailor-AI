@@ -1,0 +1,58 @@
+body {
+  margin: 0 auto;
+  max-width: 800px;
+}
+
+.shell {
+  margin: 16px;
+  padding: 16px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  display: grid;
+  gap: 14px;
+}
+
+section {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 12px;
+  background: #f8fbff;
+  border: 1px solid #e4ecf6;
+}
+
+.inline,
+.actions,
+.split {
+  display: grid;
+  gap: 10px;
+}
+
+.inline {
+  grid-template-columns: 1fr auto;
+  align-items: center;
+}
+
+.split {
+  grid-template-columns: 1fr 1fr;
+}
+
+.checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+
+.checkbox input {
+  width: 16px;
+  height: 16px;
+}
+
+@media (max-width: 700px) {
+  .split,
+  .inline {
+    grid-template-columns: 1fr;
+  }
+}

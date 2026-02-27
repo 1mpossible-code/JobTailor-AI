@@ -1,0 +1,39 @@
+body {
+  width: 390px;
+}
+
+.shell {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+
+.row {
+  display: grid;
+  gap: 6px;
+}
+
+.row.compact {
+  max-width: 180px;
+}
+
+.row.split {
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.actions {
+  grid-template-columns: 1fr 1fr;
+  align-items: center;
+  display: grid;
+  gap: 8px;
+}
+
+a {
+  color: #0f766e;
+  text-align: center;
+  font-size: 0.85rem;
+}
