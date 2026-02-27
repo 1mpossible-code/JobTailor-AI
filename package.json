@@ -8,6 +8,9 @@
     "build": "npm run clean && tsc --project tsconfig.json && node scripts/copy-static.mjs",
     "watch": "tsc --project tsconfig.json --watch"
   },
+  "dependencies": {
+    "jspdf": "^2.5.2"
+  },
   "devDependencies": {
     "@types/chrome": "^0.0.288",
     "typescript": "^5.7.3"

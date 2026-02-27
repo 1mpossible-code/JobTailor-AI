@@ -62,7 +62,10 @@ chrome.runtime.onMessage.addListener((message: GenerateMessage, _sender, sendRes
         tone: message.payload.tone,
         length: message.payload.length,
         jobText: message.payload.jobText,
-        resumeText
+        resumeText,
+        outputFormat: message.payload.outputFormat ?? "paste",
+        currentDate: message.payload.currentDate,
+        candidateName: message.payload.candidateName?.trim() || undefined
       };
 
       assertInput(request);

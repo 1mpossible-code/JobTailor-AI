@@ -1,14 +1,16 @@
 body {
-  width: 390px;
+  width: 360px;
 }
 
 .shell {
   display: grid;
-  gap: 10px;
-  padding: 12px;
+  gap: 8px;
+  padding: 10px;
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 14px;
+  max-height: 560px;
+  overflow-y: auto;
 }
 
 .row {
@@ -16,20 +18,24 @@ body {
   gap: 6px;
 }
 
-.row.compact {
-  max-width: 180px;
-}
-
-.row.split {
-  grid-template-columns: 1fr 1fr;
+.row.triple {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
 }
 
 .actions {
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   align-items: center;
   display: grid;
   gap: 8px;
+}
+
+.actions.triple {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.actions button {
+  white-space: nowrap;
 }
 
 a {

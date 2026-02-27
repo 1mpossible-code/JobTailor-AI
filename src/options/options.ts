@@ -14,6 +14,7 @@ const anthropicApiKeyEl = document.querySelector<HTMLInputElement>("#anthropicAp
 const openaiApiKeyEl = document.querySelector<HTMLInputElement>("#openaiApiKey");
 const anthropicModelEl = document.querySelector<HTMLInputElement>("#anthropicModel");
 const openaiModelEl = document.querySelector<HTMLInputElement>("#openaiModel");
+const fullNameEl = document.querySelector<HTMLInputElement>("#fullName");
 const resumeTextEl = document.querySelector<HTMLTextAreaElement>("#resumeText");
 const sessionOnlyResumeEl = document.querySelector<HTMLInputElement>("#sessionOnlyResume");
 const saveBtn = document.querySelector<HTMLButtonElement>("#saveBtn");
@@ -37,6 +38,7 @@ async function load(): Promise<void> {
     !openaiApiKeyEl ||
     !anthropicModelEl ||
     !openaiModelEl ||
+    !fullNameEl ||
     !resumeTextEl ||
     !sessionOnlyResumeEl
   ) {
@@ -53,6 +55,7 @@ async function load(): Promise<void> {
   openaiApiKeyEl.value = settings.apiKeys.openai;
   anthropicModelEl.value = settings.models.anthropic;
   openaiModelEl.value = settings.models.openai;
+  fullNameEl.value = settings.fullName;
   sessionOnlyResumeEl.checked = settings.sessionOnlyResume;
   resumeTextEl.value = resume;
 }
@@ -66,6 +69,7 @@ async function save(): Promise<void> {
     !openaiApiKeyEl ||
     !anthropicModelEl ||
     !openaiModelEl ||
+    !fullNameEl ||
     !resumeTextEl ||
     !sessionOnlyResumeEl
   ) {
@@ -81,6 +85,7 @@ async function save(): Promise<void> {
     provider,
     tone,
     length,
+    fullName: fullNameEl.value.trim(),
     sessionOnlyResume,
     apiKeys: {
       anthropic: anthropicApiKeyEl.value.trim(),

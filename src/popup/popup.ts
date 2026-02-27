@@ -1,6 +1,24 @@
 import { getResumeText, getSettings } from "../lib/storage.js";
 import type { AppSettings, LetterLength, Provider, Tone } from "../lib/types.js";
 
+interface ExtractedJob {
+  jobText: string;
+  pageTitle: string;
+  url: string;
+}
+
+interface JsPdfWindow {
+  jspdf?: {
+    jsPDF: new (options?: { unit?: string; format?: string }) => {
+      setFont: (fontName: string, fontStyle: string) => void;
+      setFontSize: (size: number) => void;
+      splitTextToSize: (text: string, size: number) => string[];
+      text: (text: string | string[], x: number, y: number, options?: { baseline?: string }) => void;
+      save: (filename: string) => void;
+    };
+  };
+}
+
 const providerEl = document.querySelector<HTMLSelectElement>("#provider");
 const toneEl = document.querySelector<HTMLSelectElement>("#tone");
 const lengthEl = document.querySelector<HTMLSelectElement>("#length");
@@ -11,9 +29,11 @@ const extractBtn = document.querySelector<HTMLButtonElement>("#extractBtn");
 const generateBtn = document.querySelector<HTMLButtonElement>("#generateBtn");
 const regenerateBtn = document.querySelector<HTMLButtonElement>("#regenerateBtn");
 const copyBtn = document.querySelector<HTMLButtonElement>("#copyBtn");
+const downloadPdfBtn = document.querySelector<HTMLButtonElement>("#downloadPdfBtn");
 
 let cachedResume = "";
 let settings: AppSettings;
+let lastPageTitle = "";
 
 function setStatus(text: string, isError = false): void {
   if (!statusEl) {
@@ -24,30 +44,40 @@ function setStatus(text: string, isError = false): void {
   statusEl.classList.toggle("error", isError);
 }
 
-function setLoading(isLoading: boolean): void {
-  [extractBtn, generateBtn, regenerateBtn].forEach((button) => {
+type LoadingContext = "extract" | "generate" | "pdf";
+
+function setLoading(isLoading: boolean, context?: LoadingContext): void {
+  [extractBtn, generateBtn, regenerateBtn, downloadPdfBtn].forEach((button) => {
     if (button) {
       button.disabled = isLoading;
     }
   });
 
   if (generateBtn) {
-    generateBtn.textContent = isLoading ? "Generating..." : "Generate";
+    generateBtn.textContent = isLoading && context === "generate" ? "Generating..." : "Generate";
+  }
+
+  if (downloadPdfBtn) {
+    downloadPdfBtn.textContent = isLoading && context === "pdf" ? "Preparing..." : "Get PDF";
   }
 }
 
-async function extractFromActiveTab(): Promise<string> {
+async function extractFromActiveTab(): Promise<ExtractedJob> {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
   if (!tab?.id) {
     throw new Error("No active tab found.");
   }
 
-  let jobText = "";
+  let payload: ExtractedJob = { jobText: "", pageTitle: tab.title ?? "", url: tab.url ?? "" };
 
   try {
     const response = await chrome.tabs.sendMessage(tab.id, { type: "GET_JOB_TEXT" });
-    jobText = String(response?.jobText ?? "").trim();
+    payload = {
+      jobText: String(response?.jobText ?? "").trim(),
+      pageTitle: String(response?.pageTitle ?? tab.title ?? ""),
+      url: String(response?.url ?? tab.url ?? "")
+    };
   } catch {
     const result = await chrome.scripting.executeScript({
       target: { tabId: tab.id },
@@ -85,23 +115,179 @@ async function extractFromActiveTab(): Promise<string> {
           document.querySelector("[data-company], [class*='company'], [id*='company']")
         );
         const body = candidates[0] ?? normalize(document.body?.innerText ?? "");
-        return [title, company, body].filter(Boolean).join("\n\n").slice(0, 16000);
+        return {
+          jobText: [title, company, body].filter(Boolean).join("\n\n").slice(0, 16000),
+          pageTitle: document.title,
+          url: window.location.href
+        };
       }
     });
 
-    jobText = String(result[0]?.result ?? "").trim();
+    const extracted = result[0]?.result as ExtractedJob | undefined;
+    payload = {
+      jobText: String(extracted?.jobText ?? "").trim(),
+      pageTitle: String(extracted?.pageTitle ?? tab.title ?? ""),
+      url: String(extracted?.url ?? tab.url ?? "")
+    };
   }
 
-  if (!jobText) {
+  if (!payload.jobText) {
     throw new Error("Could not extract content from this page. Paste the job description manually.");
   }
 
-  return jobText;
+  return payload;
 }
 
-async function generate(): Promise<void> {
-  if (!providerEl || !toneEl || !lengthEl || !jobTextEl || !outputEl) {
-    return;
+function sanitizeFilenamePart(value: string): string {
+  return value
+    .replace(/[^a-zA-Z0-9\s-]/g, "")
+    .trim()
+    .replace(/\s+/g, "_")
+    .slice(0, 50);
+}
+
+function getCurrentDateLine(): string {
+  return new Date().toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric"
+  });
+}
+
+function titleCaseWord(word: string): string {
+  if (!word) {
+    return word;
+  }
+  return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+}
+
+function nameFromEmail(resumeText: string): string | null {
+  const emailMatch = resumeText.match(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/);
+  if (!emailMatch) {
+    return null;
+  }
+
+  const local = emailMatch[0].split("@")[0].replace(/[._-]+/g, " ").trim();
+  const parts = local
+    .split(/\s+/)
+    .map((part) => part.trim())
+    .filter((part) => /^[a-zA-Z]{2,}$/.test(part));
+
+  if (parts.length < 2) {
+    return null;
+  }
+
+  return parts.slice(0, 3).map(titleCaseWord).join(" ");
+}
+
+function nameFromLetterSignoff(letter: string): string | null {
+  const lines = letter
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  for (let i = lines.length - 1; i >= 0; i -= 1) {
+    const line = lines[i];
+    if (/^(best|sincerely|regards|thank you)[,]?$|^best regards[,]?$/i.test(line) && i + 1 < lines.length) {
+      const nameLine = lines[i + 1];
+      if (/^[A-Za-z][A-Za-z\s.'-]{2,60}$/.test(nameLine)) {
+        return nameLine;
+      }
+    }
+  }
+
+  return null;
+}
+
+function extractCandidateName(resumeText: string, letter?: string): string {
+  const lines = resumeText
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .slice(0, 5);
+
+  for (const line of lines) {
+    const cleaned = line.replace(/\s+/g, " ");
+    const directMatch = cleaned.match(/^[A-Za-z][A-Za-z\s.'-]{2,60}$/);
+    if (directMatch) {
+      return directMatch[0].trim();
+    }
+
+    const prefixMatch = cleaned.match(/^([A-Za-z][A-Za-z\s.'-]{2,60})\b(?:\s+[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}|\s+\+?\d)/);
+    if (prefixMatch?.[1]) {
+      return prefixMatch[1].trim();
+    }
+  }
+
+  const emailBased = nameFromEmail(resumeText);
+  if (emailBased) {
+    return emailBased;
+  }
+
+  if (letter) {
+    const signoffName = nameFromLetterSignoff(letter);
+    if (signoffName) {
+      return signoffName;
+    }
+  }
+
+  return "Candidate";
+}
+
+function extractCompanyName(jobText: string, pageTitle: string): string {
+  const companyLabelMatch = jobText.match(/\b(?:company|employer|organization)\s*[:\-]\s*([^\n|]{2,80})/i);
+  if (companyLabelMatch?.[1]) {
+    return companyLabelMatch[1].trim();
+  }
+
+  const titleAtMatch = pageTitle.match(/\bat\s+([^\-|]+)/i);
+  if (titleAtMatch?.[1]) {
+    return titleAtMatch[1].trim();
+  }
+
+  const lines = jobText
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .slice(0, 12);
+
+  const roleTerms = /\b(intern|engineer|developer|manager|director|analyst|specialist|scientist|position|role|job|software|backend|frontend|full[-\s]?stack|security|data)\b/i;
+  const metaTerms = /\b(responsib|requirement|about|overview|qualification|benefit|salary|location)\b/i;
+
+  const lineWithAt = lines.find((line) => /\bat\s+/i.test(line));
+  if (lineWithAt) {
+    const match = lineWithAt.match(/\bat\s+([^,|\-]{2,60})/i);
+    if (match?.[1]) {
+      return match[1].trim();
+    }
+  }
+
+  const likelyLine = lines.find(
+    (line) =>
+      line.length >= 2 &&
+      line.length <= 50 &&
+      !/[.!?]/.test(line) &&
+      !metaTerms.test(line) &&
+      !roleTerms.test(line)
+  );
+  if (likelyLine) {
+    return likelyLine;
+  }
+
+  const splitTitle = pageTitle
+    .split(/[-|]/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+  if (splitTitle.length > 1) {
+    return splitTitle[1];
+  }
+
+  return "Company";
+}
+
+async function requestGeneration(outputFormat: "paste" | "pdf"): Promise<string> {
+  if (!providerEl || !toneEl || !lengthEl || !jobTextEl) {
+    throw new Error("Popup UI failed to initialize.");
   }
 
   settings = await getSettings();
@@ -109,22 +295,18 @@ async function generate(): Promise<void> {
 
   const jobText = jobTextEl.value.trim();
   if (!jobText) {
-    setStatus("Add or extract a job description first.", true);
-    return;
+    throw new Error("Add or extract a job description first.");
   }
 
   if (!cachedResume.trim()) {
-    setStatus("No resume found. Add your resume in Settings.", true);
-    return;
+    throw new Error("No resume found. Add your resume in Settings.");
   }
-
-  setLoading(true);
-  setStatus("Generating cover letter...");
 
   const provider = providerEl.value as Provider;
   const tone = toneEl.value as Tone;
-  const length = lengthEl.value as LetterLength;
+  const length = outputFormat === "pdf" ? "standard" : (lengthEl.value as LetterLength);
   const model = settings.models[provider];
+  const preferredName = settings.fullName.trim();
 
   const response = await chrome.runtime.sendMessage({
     type: "GENERATE_COVER_LETTER",
@@ -133,26 +315,110 @@ async function generate(): Promise<void> {
       tone,
       length,
       model,
+      outputFormat,
+      currentDate: outputFormat === "pdf" ? getCurrentDateLine() : undefined,
+      candidateName: preferredName || undefined,
       jobText,
       resumeText: cachedResume
     }
   });
 
-  setLoading(false);
-
   if (!response?.ok) {
-    setStatus(String(response?.error ?? "Generation failed."), true);
+    throw new Error(String(response?.error ?? "Generation failed."));
+  }
+
+  return String(response.data?.letter ?? "").trim();
+}
+
+function downloadPdf(letter: string, candidateName: string, companyName: string): void {
+  const jsPdf = (window as JsPdfWindow).jspdf?.jsPDF;
+  if (!jsPdf) {
+    throw new Error("PDF library failed to load. Reload the extension and try again.");
+  }
+
+  const doc = new jsPdf({ unit: "pt", format: "letter" });
+  const pageWidth = 612;
+  const pageHeight = 792;
+  const margin = 54;
+  const usableWidth = pageWidth - margin * 2;
+  const usableHeight = pageHeight - margin * 2;
+
+  doc.setFont("helvetica", "normal");
+  let fontSize = 12;
+  let lines = doc.splitTextToSize(letter, usableWidth);
+  let lineHeight = fontSize * 1.45;
+
+  while (lines.length * lineHeight > usableHeight && fontSize > 10) {
+    fontSize -= 0.5;
+    doc.setFontSize(fontSize);
+    lines = doc.splitTextToSize(letter, usableWidth);
+    lineHeight = fontSize * 1.45;
+  }
+
+  const maxLines = Math.floor(usableHeight / lineHeight);
+  if (lines.length > maxLines) {
+    lines = lines.slice(0, Math.max(maxLines - 1, 1));
+    lines.push("...");
+  }
+
+  doc.setFontSize(fontSize);
+  doc.text(lines, margin, margin, { baseline: "top" });
+
+  const safeName = sanitizeFilenamePart(candidateName) || "Candidate";
+  const safeCompany = sanitizeFilenamePart(companyName) || "Company";
+  doc.save(`${safeName}_Cover_Letter_${safeCompany}.pdf`);
+}
+
+async function generate(): Promise<void> {
+  if (!outputEl) {
     return;
   }
 
-  const letter = String(response.data?.letter ?? "");
-  outputEl.value = letter;
-  copyBtn && (copyBtn.disabled = !letter.trim());
-  setStatus("Done.");
+  setLoading(true, "generate");
+  setStatus("Generating cover letter...");
+
+  try {
+    const letter = await requestGeneration("paste");
+    outputEl.value = letter;
+    copyBtn && (copyBtn.disabled = !letter.trim());
+    setStatus("Done.");
+  } finally {
+    setLoading(false);
+  }
+}
+
+async function generateAndDownloadPdf(): Promise<void> {
+  if (!jobTextEl) {
+    return;
+  }
+
+  setLoading(true, "pdf");
+  setStatus("Generating formal PDF letter...");
+
+  try {
+    const letter = await requestGeneration("pdf");
+    const candidateName = settings.fullName.trim() || extractCandidateName(cachedResume, letter);
+    const companyName = extractCompanyName(jobTextEl.value, lastPageTitle);
+    downloadPdf(letter, candidateName, companyName);
+    setStatus("PDF downloaded.");
+  } finally {
+    setLoading(false);
+  }
 }
 
 async function init(): Promise<void> {
-  if (!providerEl || !toneEl || !lengthEl || !jobTextEl || !outputEl || !extractBtn || !generateBtn || !regenerateBtn || !copyBtn) {
+  if (
+    !providerEl ||
+    !toneEl ||
+    !lengthEl ||
+    !jobTextEl ||
+    !outputEl ||
+    !extractBtn ||
+    !generateBtn ||
+    !regenerateBtn ||
+    !copyBtn ||
+    !downloadPdfBtn
+  ) {
     return;
   }
 
@@ -166,10 +432,11 @@ async function init(): Promise<void> {
 
   extractBtn.addEventListener("click", async () => {
     try {
-      setLoading(true);
+      setLoading(true, "extract");
       setStatus("Extracting from page...");
-      const text = await extractFromActiveTab();
-      jobTextEl.value = text;
+      const extracted = await extractFromActiveTab();
+      jobTextEl.value = extracted.jobText;
+      lastPageTitle = extracted.pageTitle;
       setStatus("Job description extracted.");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to extract job description.";
@@ -206,6 +473,16 @@ async function init(): Promise<void> {
     }
     await navigator.clipboard.writeText(text);
     setStatus("Copied to clipboard.");
+  });
+
+  downloadPdfBtn.addEventListener("click", async () => {
+    try {
+      await generateAndDownloadPdf();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "PDF generation failed.";
+      setLoading(false);
+      setStatus(message, true);
+    }
   });
 }
 

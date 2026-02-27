@@ -8,6 +8,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   provider: "anthropic",
   tone: "professional",
   length: "standard",
+  fullName: "",
   sessionOnlyResume: false,
   models: {
     anthropic: "claude-3-5-haiku-latest",

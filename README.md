@@ -35,7 +35,7 @@ npm run build
    - click **Extract from page** (or paste the description manually),
    - choose provider/tone/length,
    - click **Generate**.
-4. Copy the generated cover letter.
+4. Copy the generated cover letter, or click **Download PDF** for a formal one-page PDF business-letter version.
 
 ## Notes
 

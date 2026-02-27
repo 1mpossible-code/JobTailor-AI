@@ -12,17 +12,34 @@ export function buildSystemPrompt(): string {
     "Write a role-specific cover letter using only factual details present in the resume.",
     "Never invent achievements, years of experience, companies, or credentials.",
     "If information is missing, keep wording general instead of fabricating.",
-    "Return paste-ready letter content with no personal contact header and no date.",
-    "Include a short greeting line and a short sign-off with the candidate name.",
+    "Follow the requested output formatting instructions exactly.",
     "Output plain text only, without markdown."
   ].join(" ");
 }
 
 export function buildUserPrompt(input: GenerationRequest): string {
+  const format = input.outputFormat ?? "paste";
+  const today =
+    input.currentDate ??
+    new Date().toLocaleDateString("en-US", {
+      month: "long",
+      day: "numeric",
+      year: "numeric"
+    });
+  const formatInstruction =
+    format === "pdf"
+      ? `Format as a formal business letter suitable for PDF submission. Use this exact date line: ${today}. Include recipient greeting, concise body paragraphs, and a professional sign-off. Keep total length likely to fit one PDF page.`
+      : "Format for quick form paste. Keep greeting and sign-off, but no personal contact header and no date.";
+  const candidateNameInstruction = input.candidateName
+    ? `Use this exact candidate name in the sign-off: ${input.candidateName}.`
+    : "";
+
   return [
     `Tone: ${input.tone}`,
     LENGTH_GUIDANCE[input.length],
     "Structure: greeting, 3-5 concise paragraphs, then a short sign-off.",
+    formatInstruction,
+    candidateNameInstruction,
     "Keep it simple and easy to paste into application forms.",
     "Prioritize matching the role requirements with resume evidence.",
     "",
@@ -31,5 +48,7 @@ export function buildUserPrompt(input: GenerationRequest): string {
     "",
     "Resume:",
     input.resumeText.trim()
-  ].join("\n");
+  ]
+    .filter(Boolean)
+    .join("\n");
 }

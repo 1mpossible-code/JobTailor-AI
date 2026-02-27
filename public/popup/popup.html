@@ -11,15 +11,14 @@
     <main class="shell">
       <h1>Cover Letter</h1>
 
-      <div class="row compact">
-        <label for="provider">Provider</label>
-        <select id="provider">
-          <option value="anthropic">Anthropic</option>
-          <option value="openai">OpenAI</option>
-        </select>
-      </div>
-
-      <div class="row split">
+      <div class="row triple">
+        <div>
+          <label for="provider">Provider</label>
+          <select id="provider">
+            <option value="anthropic">Anthropic</option>
+            <option value="openai">OpenAI</option>
+          </select>
+        </div>
         <div>
           <label for="tone">Tone</label>
           <select id="tone">
@@ -44,17 +43,18 @@
 
       <div class="row">
         <label for="jobText">Job description</label>
-        <textarea id="jobText" rows="7" placeholder="Paste job description or use extract."></textarea>
+        <textarea id="jobText" rows="5" placeholder="Paste job description or use extract."></textarea>
       </div>
 
-      <div class="row actions">
+      <div class="row actions triple">
         <button id="generateBtn" type="button">Generate</button>
         <button id="regenerateBtn" class="secondary" type="button">Regenerate</button>
+        <button id="downloadPdfBtn" class="secondary" type="button">Get PDF</button>
       </div>
 
       <div class="row">
         <label for="output">Cover letter</label>
-        <textarea id="output" rows="10" placeholder="Generated cover letter appears here."></textarea>
+        <textarea id="output" rows="7" placeholder="Generated cover letter appears here."></textarea>
       </div>
 
       <div class="row actions">
@@ -64,6 +64,7 @@
 
       <p id="status" class="status"></p>
     </main>
+    <script src="../vendor/jspdf.umd.min.js"></script>
     <script type="module" src="./popup.js"></script>
   </body>
 </html>
