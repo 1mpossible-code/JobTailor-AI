@@ -14,6 +14,10 @@ export function buildSystemPrompt(): string {
     "If information is missing, keep wording general instead of fabricating.",
     "Use a balanced, grounded tone: confident but not boastful.",
     "Do not use hype language, superlatives, or self-congratulatory phrasing.",
+    "Write in a natural, human voice with varied sentence rhythm.",
+    "Avoid generic AI-sounding templates, buzzwords, and repetitive transitions.",
+    "Write in clear undergraduate-level language: direct, specific, and easy to read.",
+    "Do not use em dashes.",
     "Follow the requested output formatting instructions exactly.",
     "Output plain text only, without markdown."
   ].join(" ");
@@ -45,9 +49,15 @@ export function buildUserPrompt(input: GenerationRequest): string {
     "Keep it simple and easy to paste into application forms.",
     "Prioritize matching the role requirements with resume evidence.",
     "Show both contribution and learning mindset, with practical and specific wording.",
-    "Use numbers sparingly: at most 2 numeric claims, and only when clearly supported by the resume/job description.",
+    "Infer likely motivations and fit from the resume and job description, and express them clearly without speculation.",
+    "Highlight 2-3 differentiators backed by concrete resume evidence, without comparing against other applicants.",
+    "Do not include a failure lesson, growth lesson, or reflective anecdote section.",
+    "Do not mention draining environments, interpersonal negatives, or private concerns.",
+    "Use numbers very sparingly: at most 1 numeric claim, only when clearly supported by the resume/job description, and skip numbers entirely when not essential.",
     "Do not mention GPA unless the job description explicitly requests GPA, transcript, or an academic threshold.",
     "Avoid exaggerated adjectives like outstanding, exceptional, world-class, or best-in-class.",
+    "Avoid stock phrasing like 'I am excited to apply' unless rewritten in a specific way tied to this role.",
+    "Prefer plain verbs and concrete examples over corporate jargon.",
     "",
     "Job description:",
     input.jobText.trim(),
@@ -66,6 +76,9 @@ export function buildAnswerSystemPrompt(): string {
     "Use only factual details present in the resume and job description.",
     "Never invent achievements, years of experience, companies, or credentials.",
     "Use a balanced, grounded tone: confident, specific, and not boastful.",
+    "Return only the final answer paragraph text.",
+    "Do not include prefaces, labels, framing sentences, or meta commentary.",
+    "Do not write phrases like 'Here is your answer' or similar.",
     "Output plain text only, without markdown."
   ].join(" ");
 }
@@ -78,6 +91,8 @@ export function buildAnswerUserPrompt(input: QuestionAnswerRequest): string {
     "If the company uses leadership principles (for example Amazon), align the answer to relevant principles naturally.",
     "Use no more than one numeric claim unless the question specifically asks for metrics.",
     "Do not mention GPA unless the question or job description explicitly asks for it.",
+    "Output only one paragraph with no intro line and no trailing explanation.",
+    "Do not use em dashes.",
     "Avoid buzzwords and generic filler.",
     "",
     "Application question:",

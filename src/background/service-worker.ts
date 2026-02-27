@@ -27,6 +27,10 @@ interface GenerateAnswerMessage {
 
 type RuntimeMessage = GenerateMessage | GenerateAnswerMessage;
 
+function stripEmDashes(text: string): string {
+  return text.replace(/[—–]/g, "-");
+}
+
 function assertInput(req: GenerationRequest): void {
   if (!req.jobText.trim()) {
     throw new Error("Job description is required.");
@@ -109,7 +113,7 @@ chrome.runtime.onMessage.addListener((message: RuntimeMessage, _sender, sendResp
         };
 
         assertInput(request);
-        const letter = await generateLetter(request, apiKey, provider);
+        const letter = stripEmDashes(await generateLetter(request, apiKey, provider));
         const response: GenerationResponse = { letter };
         sendResponse({ ok: true, data: response });
         return;
@@ -133,7 +137,7 @@ chrome.runtime.onMessage.addListener((message: RuntimeMessage, _sender, sendResp
         outputFormat: "paste"
       });
 
-      const answer = await generateAnswer(answerRequest, apiKey, provider);
+      const answer = stripEmDashes(await generateAnswer(answerRequest, apiKey, provider));
       const response: QuestionAnswerResponse = { answer };
       sendResponse({ ok: true, data: response });
     } catch (error) {
