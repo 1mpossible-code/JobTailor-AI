@@ -1,21 +1,19 @@
 body {
-  width: 360px;
+  width: 356px;
 }
 
 .shell {
   display: grid;
-  gap: 8px;
-  padding: 10px;
+  gap: 7px;
+  padding: 9px;
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 14px;
-  max-height: 560px;
-  overflow-y: auto;
 }
 
 .row {
   display: grid;
-  gap: 6px;
+  gap: 5px;
 }
 
 .row.triple {
@@ -27,7 +25,7 @@ body {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   align-items: center;
   display: grid;
-  gap: 8px;
+  gap: 7px;
 }
 
 .actions.triple {
@@ -42,4 +40,8 @@ a {
   color: #0f766e;
   text-align: center;
   font-size: 0.85rem;
+}
+
+textarea {
+  line-height: 1.3;
 }
