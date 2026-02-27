@@ -1,4 +1,4 @@
-import type { GenerationRequest } from "./types.js";
+import type { GenerationRequest, QuestionAnswerRequest } from "./types.js";
 
 const LENGTH_GUIDANCE: Record<GenerationRequest["length"], string> = {
   short: "Keep it around 180-220 words.",
@@ -51,4 +51,33 @@ export function buildUserPrompt(input: GenerationRequest): string {
   ]
     .filter(Boolean)
     .join("\n");
+}
+
+export function buildAnswerSystemPrompt(): string {
+  return [
+    "You are an expert job application writing assistant.",
+    "Write one concise, polished paragraph that answers the application question directly.",
+    "Use only factual details present in the resume and job description.",
+    "Never invent achievements, years of experience, companies, or credentials.",
+    "Output plain text only, without markdown."
+  ].join(" ");
+}
+
+export function buildAnswerUserPrompt(input: QuestionAnswerRequest): string {
+  return [
+    `Tone: ${input.tone}`,
+    "Length: one paragraph, around 90-140 words.",
+    "Write in first person and keep it specific and authentic.",
+    "If the company uses leadership principles (for example Amazon), align the answer to relevant principles naturally.",
+    "Avoid buzzwords and generic filler.",
+    "",
+    "Application question:",
+    input.question.trim(),
+    "",
+    "Job description:",
+    input.jobText.trim(),
+    "",
+    "Resume:",
+    input.resumeText.trim()
+  ].join("\n");
 }

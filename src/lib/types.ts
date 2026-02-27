@@ -27,3 +27,16 @@ export interface GenerationRequest {
 export interface GenerationResponse {
   letter: string;
 }
+
+export interface QuestionAnswerRequest {
+  provider: Provider;
+  model: string;
+  tone: Tone;
+  jobText: string;
+  resumeText: string;
+  question: string;
+}
+
+export interface QuestionAnswerResponse {
+  answer: string;
+}

@@ -37,27 +37,55 @@
         </div>
       </div>
 
+      <div class="row tabs">
+        <button id="coverTabBtn" class="tab active" type="button">Cover Letter</button>
+        <button id="answerTabBtn" class="tab" type="button">Question Answer</button>
+      </div>
+
       <div class="row">
         <label for="jobText">Job description</label>
         <button id="extractBtn" class="secondary" type="button">Extract from page</button>
         <textarea id="jobText" rows="4" placeholder="Paste job description or use extract."></textarea>
       </div>
 
-      <div class="row actions triple">
-        <button id="generateBtn" type="button">Generate</button>
-        <button id="regenerateBtn" class="secondary" type="button">Regenerate</button>
-        <button id="downloadPdfBtn" class="secondary" type="button">Get PDF</button>
-      </div>
+      <section id="coverPanel" class="panel active">
+        <div class="row actions triple">
+          <button id="generateBtn" type="button">Generate</button>
+          <button id="regenerateBtn" class="secondary" type="button">Regenerate</button>
+          <button id="downloadPdfBtn" class="secondary" type="button">Get PDF</button>
+        </div>
 
-      <div class="row">
-        <label for="output">Cover letter</label>
-        <textarea id="output" rows="6" placeholder="Generated cover letter appears here."></textarea>
-      </div>
+        <div class="row">
+          <label for="output">Cover letter</label>
+          <textarea id="output" rows="6" placeholder="Generated cover letter appears here."></textarea>
+        </div>
 
-      <div class="row actions">
-        <button id="copyBtn" class="secondary" type="button">Copy</button>
-        <a href="../options/options.html" target="_blank" rel="noreferrer">Settings</a>
-      </div>
+        <div class="row actions">
+          <button id="copyBtn" class="secondary" type="button">Copy</button>
+          <a href="../options/options.html" target="_blank" rel="noreferrer">Settings</a>
+        </div>
+      </section>
+
+      <section id="answerPanel" class="panel">
+        <div class="row">
+          <label for="questionInput">Application question</label>
+          <textarea
+            id="questionInput"
+            rows="1"
+            placeholder="Example: Why did you decide to apply to this role?"
+          ></textarea>
+        </div>
+
+        <div class="row actions">
+          <button id="generateAnswerBtn" type="button">Generate answer</button>
+          <button id="copyAnswerBtn" class="secondary" type="button">Copy answer</button>
+        </div>
+
+        <div class="row">
+          <label for="answerOutput">Answer paragraph</label>
+          <textarea id="answerOutput" rows="5" placeholder="Generated answer appears here."></textarea>
+        </div>
+      </section>
 
       <p id="status" class="status"></p>
     </main>

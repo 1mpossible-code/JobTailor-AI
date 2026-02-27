@@ -16,6 +16,21 @@ body {
   gap: 5px;
 }
 
+.tabs {
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.tab {
+  background: #e5edf6;
+  color: #1f2937;
+}
+
+.tab.active {
+  background: var(--accent);
+  color: #fff;
+}
+
 .row.triple {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
@@ -34,6 +49,15 @@ body {
 
 .actions button {
   white-space: nowrap;
+}
+
+.panel {
+  display: none;
+  gap: 7px;
+}
+
+.panel.active {
+  display: grid;
 }
 
 a {

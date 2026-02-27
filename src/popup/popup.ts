@@ -24,12 +24,20 @@ const toneEl = document.querySelector<HTMLSelectElement>("#tone");
 const lengthEl = document.querySelector<HTMLSelectElement>("#length");
 const jobTextEl = document.querySelector<HTMLTextAreaElement>("#jobText");
 const outputEl = document.querySelector<HTMLTextAreaElement>("#output");
+const questionInputEl = document.querySelector<HTMLTextAreaElement>("#questionInput");
+const answerOutputEl = document.querySelector<HTMLTextAreaElement>("#answerOutput");
 const statusEl = document.querySelector<HTMLParagraphElement>("#status");
 const extractBtn = document.querySelector<HTMLButtonElement>("#extractBtn");
 const generateBtn = document.querySelector<HTMLButtonElement>("#generateBtn");
 const regenerateBtn = document.querySelector<HTMLButtonElement>("#regenerateBtn");
+const generateAnswerBtn = document.querySelector<HTMLButtonElement>("#generateAnswerBtn");
 const copyBtn = document.querySelector<HTMLButtonElement>("#copyBtn");
+const copyAnswerBtn = document.querySelector<HTMLButtonElement>("#copyAnswerBtn");
 const downloadPdfBtn = document.querySelector<HTMLButtonElement>("#downloadPdfBtn");
+const coverTabBtn = document.querySelector<HTMLButtonElement>("#coverTabBtn");
+const answerTabBtn = document.querySelector<HTMLButtonElement>("#answerTabBtn");
+const coverPanel = document.querySelector<HTMLElement>("#coverPanel");
+const answerPanel = document.querySelector<HTMLElement>("#answerPanel");
 
 let cachedResume = "";
 let settings: AppSettings;
@@ -44,10 +52,10 @@ function setStatus(text: string, isError = false): void {
   statusEl.classList.toggle("error", isError);
 }
 
-type LoadingContext = "extract" | "generate" | "pdf";
+type LoadingContext = "extract" | "generate" | "pdf" | "answer";
 
 function setLoading(isLoading: boolean, context?: LoadingContext): void {
-  [extractBtn, generateBtn, regenerateBtn, downloadPdfBtn].forEach((button) => {
+  [extractBtn, generateBtn, regenerateBtn, downloadPdfBtn, generateAnswerBtn, copyAnswerBtn].forEach((button) => {
     if (button) {
       button.disabled = isLoading;
     }
@@ -60,6 +68,22 @@ function setLoading(isLoading: boolean, context?: LoadingContext): void {
   if (downloadPdfBtn) {
     downloadPdfBtn.textContent = isLoading && context === "pdf" ? "Preparing..." : "Get PDF";
   }
+
+  if (generateAnswerBtn) {
+    generateAnswerBtn.textContent = isLoading && context === "answer" ? "Generating..." : "Generate answer";
+  }
+}
+
+function setActiveTab(tab: "cover" | "answer"): void {
+  if (!coverTabBtn || !answerTabBtn || !coverPanel || !answerPanel) {
+    return;
+  }
+
+  const coverActive = tab === "cover";
+  coverTabBtn.classList.toggle("active", coverActive);
+  answerTabBtn.classList.toggle("active", !coverActive);
+  coverPanel.classList.toggle("active", coverActive);
+  answerPanel.classList.toggle("active", !coverActive);
 }
 
 async function extractFromActiveTab(): Promise<ExtractedJob> {
@@ -330,6 +354,50 @@ async function requestGeneration(outputFormat: "paste" | "pdf"): Promise<string>
   return String(response.data?.letter ?? "").trim();
 }
 
+async function requestQuestionAnswer(): Promise<string> {
+  if (!providerEl || !toneEl || !jobTextEl || !questionInputEl) {
+    throw new Error("Popup UI failed to initialize.");
+  }
+
+  settings = await getSettings();
+  cachedResume = await getResumeText(settings);
+
+  const jobText = jobTextEl.value.trim();
+  const question = questionInputEl.value.trim();
+
+  if (!jobText) {
+    throw new Error("Add or extract a job description first.");
+  }
+  if (!question) {
+    throw new Error("Enter an application question first.");
+  }
+  if (!cachedResume.trim()) {
+    throw new Error("No resume found. Add your resume in Settings.");
+  }
+
+  const provider = providerEl.value as Provider;
+  const tone = toneEl.value as Tone;
+  const model = settings.models[provider];
+
+  const response = await chrome.runtime.sendMessage({
+    type: "GENERATE_QUESTION_ANSWER",
+    payload: {
+      provider,
+      tone,
+      model,
+      jobText,
+      question,
+      resumeText: cachedResume
+    }
+  });
+
+  if (!response?.ok) {
+    throw new Error(String(response?.error ?? "Answer generation failed."));
+  }
+
+  return String(response.data?.answer ?? "").trim();
+}
+
 function downloadPdf(letter: string, candidateName: string, companyName: string): void {
   const jsPdf = (window as JsPdfWindow).jspdf?.jsPDF;
   if (!jsPdf) {
@@ -406,6 +474,26 @@ async function generateAndDownloadPdf(): Promise<void> {
   }
 }
 
+async function generateQuestionAnswer(): Promise<void> {
+  if (!answerOutputEl) {
+    return;
+  }
+
+  setLoading(true, "answer");
+  setStatus("Generating answer paragraph...");
+
+  try {
+    const answer = await requestQuestionAnswer();
+    answerOutputEl.value = answer;
+    if (copyAnswerBtn) {
+      copyAnswerBtn.disabled = !answer;
+    }
+    setStatus("Answer ready.");
+  } finally {
+    setLoading(false);
+  }
+}
+
 async function init(): Promise<void> {
   if (
     !providerEl ||
@@ -413,11 +501,19 @@ async function init(): Promise<void> {
     !lengthEl ||
     !jobTextEl ||
     !outputEl ||
+    !questionInputEl ||
+    !answerOutputEl ||
     !extractBtn ||
     !generateBtn ||
     !regenerateBtn ||
+    !generateAnswerBtn ||
     !copyBtn ||
-    !downloadPdfBtn
+    !copyAnswerBtn ||
+    !downloadPdfBtn ||
+    !coverTabBtn ||
+    !answerTabBtn ||
+    !coverPanel ||
+    !answerPanel
   ) {
     return;
   }
@@ -429,6 +525,16 @@ async function init(): Promise<void> {
   toneEl.value = settings.tone;
   lengthEl.value = settings.length;
   copyBtn.disabled = true;
+  copyAnswerBtn.disabled = true;
+  setActiveTab("cover");
+
+  coverTabBtn.addEventListener("click", () => {
+    setActiveTab("cover");
+  });
+
+  answerTabBtn.addEventListener("click", () => {
+    setActiveTab("answer");
+  });
 
   extractBtn.addEventListener("click", async () => {
     try {
@@ -483,6 +589,25 @@ async function init(): Promise<void> {
       setLoading(false);
       setStatus(message, true);
     }
+  });
+
+  generateAnswerBtn.addEventListener("click", async () => {
+    try {
+      await generateQuestionAnswer();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Answer generation failed.";
+      setLoading(false);
+      setStatus(message, true);
+    }
+  });
+
+  copyAnswerBtn.addEventListener("click", async () => {
+    const text = answerOutputEl.value.trim();
+    if (!text) {
+      return;
+    }
+    await navigator.clipboard.writeText(text);
+    setStatus("Answer copied to clipboard.");
   });
 }
 
