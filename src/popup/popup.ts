@@ -473,31 +473,6 @@ function pickBestCompanyName(jobText: string, pageTitle: string, url: string): s
   return companyFromUrl(url);
 }
 
-function sanitizePdfLetter(letter: string, companyName: string | null): string {
-  const normalized = letter
-    .replace(/^\s*\[\s*Company\s+Address\s*\]\s*$/gim, "")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
-
-  if (!companyName || !isGoodCompanyName(companyName)) {
-    return normalized;
-  }
-
-  const preview = normalized
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .slice(0, 10)
-    .join("\n")
-    .toLowerCase();
-
-  if (preview.includes(companyName.toLowerCase())) {
-    return normalized;
-  }
-
-  return `${companyName}\n\n${normalized}`;
-}
-
 async function requestGeneration(outputFormat: "paste" | "pdf"): Promise<string> {
   if (!providerEl || !toneEl || !lengthEl || !jobTextEl) {
     throw new Error("Popup UI failed to initialize.");
@@ -517,7 +492,7 @@ async function requestGeneration(outputFormat: "paste" | "pdf"): Promise<string>
 
   const provider = providerEl.value as Provider;
   const tone = toneEl.value as Tone;
-  const length = outputFormat === "pdf" ? "standard" : (lengthEl.value as LetterLength);
+  const length = lengthEl.value as LetterLength;
   const model = settings.models[provider];
   const preferredName = settings.fullName.trim();
 
@@ -602,16 +577,11 @@ async function requestHumanizedText(text: string): Promise<string> {
   return String(response.data?.text ?? "").trim();
 }
 
-function buildPdfFilename(companyName: string | null): string {
-  const safeCompany = sanitizeFilenamePart(companyName ?? "");
-  if (safeCompany) {
-    return `Cover_Letter_${safeCompany}.pdf`;
-  }
-
+function buildPdfFilename(): string {
   return "Cover_Letter.pdf";
 }
 
-function downloadPdf(letter: string, companyName: string | null): void {
+function downloadPdf(letter: string): void {
   const jsPdf = (window as JsPdfWindow).jspdf?.jsPDF;
   if (!jsPdf) {
     throw new Error("PDF library failed to load. Reload the extension and try again.");
@@ -645,7 +615,7 @@ function downloadPdf(letter: string, companyName: string | null): void {
   doc.setFontSize(fontSize);
   doc.text(lines, margin, margin, { baseline: "top" });
 
-  doc.save(buildPdfFilename(companyName));
+  doc.save(buildPdfFilename());
 }
 
 async function generate(): Promise<void> {
@@ -672,12 +642,11 @@ async function generateAndDownloadPdf(): Promise<void> {
   }
 
   setLoading(true, "pdf");
-  setStatus("Generating formal PDF letter...");
+  setStatus("Generating PDF...");
 
   try {
-    const companyName = pickBestCompanyName(jobTextEl.value, lastPageTitle, activeTabUrl);
-    const letter = sanitizePdfLetter(await requestGeneration("pdf"), companyName);
-    downloadPdf(letter, companyName);
+    const letter = outputEl?.value.trim() || (await requestGeneration("paste"));
+    downloadPdf(letter);
     setStatus("PDF downloaded.");
   } finally {
     setLoading(false);
