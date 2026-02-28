@@ -1,8 +1,13 @@
-import type { AppSettings } from "./types.js";
+import type { AppSettings, JobDraft } from "./types.js";
 
 const SETTINGS_KEY = "appSettings";
 const LOCAL_RESUME_KEY = "resumeText";
 const SESSION_RESUME_KEY = "resumeText";
+const JOB_DRAFT_KEY_PREFIX = "jobDraft:";
+
+function getJobDraftKey(tabId: number): string {
+  return `${JOB_DRAFT_KEY_PREFIX}${tabId}`;
+}
 
 export const DEFAULT_SETTINGS: AppSettings = {
   provider: "anthropic",
@@ -83,4 +88,41 @@ export async function saveResumeText(text: string, sessionOnly: boolean): Promis
 export async function clearResumeText(): Promise<void> {
   await chrome.storage.local.remove(LOCAL_RESUME_KEY);
   await chrome.storage.session.remove(SESSION_RESUME_KEY);
+}
+
+export async function getJobDraft(tabId: number): Promise<JobDraft | null> {
+  const key = getJobDraftKey(tabId);
+  const result = await chrome.storage.session.get(key);
+  const raw = result[key] as Partial<JobDraft> | undefined;
+
+  if (!raw || typeof raw !== "object") {
+    return null;
+  }
+
+  const jobText = String(raw.jobText ?? "").trim();
+  if (!jobText) {
+    return null;
+  }
+
+  return {
+    jobText,
+    pageTitle: String(raw.pageTitle ?? ""),
+    url: String(raw.url ?? "")
+  };
+}
+
+export async function saveJobDraft(tabId: number, draft: JobDraft): Promise<void> {
+  const key = getJobDraftKey(tabId);
+  await chrome.storage.session.set({
+    [key]: {
+      jobText: draft.jobText.trim(),
+      pageTitle: draft.pageTitle,
+      url: draft.url
+    }
+  });
+}
+
+export async function clearJobDraft(tabId: number): Promise<void> {
+  const key = getJobDraftKey(tabId);
+  await chrome.storage.session.remove(key);
 }

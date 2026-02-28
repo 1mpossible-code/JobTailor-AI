@@ -1,4 +1,4 @@
-import { getResumeText, getSettings } from "../lib/storage.js";
+import { clearJobDraft, getJobDraft, getResumeText, getSettings, saveJobDraft } from "../lib/storage.js";
 import type { AppSettings, LetterLength, Provider, Tone } from "../lib/types.js";
 
 interface ExtractedJob {
@@ -44,6 +44,9 @@ let cachedResume = "";
 let settings: AppSettings;
 let lastPageTitle = "";
 let activeTab: "cover" | "answer" = "cover";
+let activeTabId: number | null = null;
+let activeTabUrl = "";
+let draftSaveTimeout: number | undefined;
 
 function setStatus(text: string, isError = false): void {
   if (!statusEl) {
@@ -244,6 +247,45 @@ async function extractFromActiveTab(): Promise<ExtractedJob> {
   }
 
   return payload;
+}
+
+async function loadActiveTabContext(): Promise<void> {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (!tab?.id) {
+    throw new Error("No active tab found.");
+  }
+
+  activeTabId = tab.id;
+  activeTabUrl = String(tab.url ?? "");
+  lastPageTitle = String(tab.title ?? "");
+}
+
+async function persistJobDraft(jobText: string, pageTitle: string, url: string): Promise<void> {
+  if (activeTabId === null) {
+    return;
+  }
+
+  const trimmed = jobText.trim();
+  if (!trimmed) {
+    await clearJobDraft(activeTabId);
+    return;
+  }
+
+  await saveJobDraft(activeTabId, {
+    jobText: trimmed,
+    pageTitle,
+    url
+  });
+}
+
+function scheduleDraftSave(jobText: string, pageTitle: string, url: string): void {
+  if (draftSaveTimeout !== undefined) {
+    window.clearTimeout(draftSaveTimeout);
+  }
+
+  draftSaveTimeout = window.setTimeout(() => {
+    void persistJobDraft(jobText, pageTitle, url);
+  }, 300);
 }
 
 function sanitizeFilenamePart(value: string): string {
@@ -644,6 +686,21 @@ async function init(): Promise<void> {
   settings = await getSettings();
   cachedResume = await getResumeText(settings);
 
+  try {
+    await loadActiveTabContext();
+
+    if (activeTabId !== null) {
+      const cachedJobDraft = await getJobDraft(activeTabId);
+      if (cachedJobDraft?.jobText) {
+        jobTextEl.value = cachedJobDraft.jobText;
+        lastPageTitle = cachedJobDraft.pageTitle || lastPageTitle;
+        activeTabUrl = cachedJobDraft.url || activeTabUrl;
+      }
+    }
+  } catch {
+    activeTabId = null;
+  }
+
   providerEl.value = settings.provider;
   toneEl.value = settings.tone;
   lengthEl.value = settings.length;
@@ -651,6 +708,14 @@ async function init(): Promise<void> {
   copyAnswerBtn.disabled = true;
   setActiveTab("cover");
   bindKeyboardShortcuts();
+
+  jobTextEl.addEventListener("input", () => {
+    scheduleDraftSave(jobTextEl.value, lastPageTitle, activeTabUrl);
+  });
+
+  jobTextEl.addEventListener("blur", () => {
+    void persistJobDraft(jobTextEl.value, lastPageTitle, activeTabUrl);
+  });
 
   coverTabBtn.addEventListener("click", () => {
     setActiveTab("cover");
@@ -667,6 +732,8 @@ async function init(): Promise<void> {
       const extracted = await extractFromActiveTab();
       jobTextEl.value = extracted.jobText;
       lastPageTitle = extracted.pageTitle;
+      activeTabUrl = extracted.url;
+      await persistJobDraft(extracted.jobText, extracted.pageTitle, extracted.url);
       setStatus("Job description extracted.");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to extract job description.";

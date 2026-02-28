@@ -48,3 +48,9 @@ export interface HumanizeTextRequest {
 export interface HumanizeTextResponse {
   text: string;
 }
+
+export interface JobDraft {
+  jobText: string;
+  pageTitle: string;
+  url: string;
+}

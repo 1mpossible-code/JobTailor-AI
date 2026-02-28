@@ -6,7 +6,7 @@ import {
   buildSystemPrompt,
   buildUserPrompt
 } from "../lib/prompt.js";
-import { getSettings } from "../lib/storage.js";
+import { clearJobDraft, getSettings } from "../lib/storage.js";
 import type {
   GenerationRequest,
   GenerationResponse,
@@ -33,6 +33,10 @@ interface HumanizeMessage {
 }
 
 type RuntimeMessage = GenerateMessage | GenerateAnswerMessage | HumanizeMessage;
+
+chrome.tabs.onRemoved.addListener((tabId) => {
+  void clearJobDraft(tabId);
+});
 
 function stripEmDashes(text: string): string {
   return text.replace(/[—–]/g, "-");
