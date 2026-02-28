@@ -34,7 +34,7 @@ export function buildUserPrompt(input: GenerationRequest): string {
     });
   const formatInstruction =
     format === "pdf"
-      ? `Format as a formal business letter suitable for PDF submission. Use this exact date line: ${today}. Include recipient greeting, concise body paragraphs, and a professional sign-off. Keep total length likely to fit one PDF page.`
+      ? `Format as a formal business letter suitable for PDF submission. Use this exact date line: ${today}. Include a company header before the greeting. If a real company address is available from the provided context, include company name plus address lines. If no real address is available, still include a company header line using only the real company name. Do not use placeholders such as [Company Address] or any bracketed placeholder text. Include recipient greeting, concise body paragraphs, and a professional sign-off. Keep total length likely to fit one PDF page.`
       : "Format for quick form paste. Keep greeting and sign-off, but no personal contact header and no date.";
   const candidateNameInstruction = input.candidateName
     ? `Use this exact candidate name in the sign-off: ${input.candidateName}.`

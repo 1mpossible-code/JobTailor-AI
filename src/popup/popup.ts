@@ -296,92 +296,110 @@ function sanitizeFilenamePart(value: string): string {
     .slice(0, 50);
 }
 
-function getCurrentDateLine(): string {
-  return new Date().toLocaleDateString("en-US", {
-    month: "long",
-    day: "numeric",
-    year: "numeric"
-  });
-}
-
-function titleCaseWord(word: string): string {
-  if (!word) {
-    return word;
-  }
-  return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
-}
-
-function nameFromEmail(resumeText: string): string | null {
-  const emailMatch = resumeText.match(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/);
-  if (!emailMatch) {
-    return null;
-  }
-
-  const local = emailMatch[0].split("@")[0].replace(/[._-]+/g, " ").trim();
-  const parts = local
+function titleCase(value: string): string {
+  return value
     .split(/\s+/)
-    .map((part) => part.trim())
-    .filter((part) => /^[a-zA-Z]{2,}$/.test(part));
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join(" ");
+}
 
-  if (parts.length < 2) {
+function normalizeCompanyCandidate(value: string): string {
+  return value
+    .replace(/^at\s+/i, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+const ATS_DOMAIN_MARKERS = [
+  "ashbyhq",
+  "greenhouse",
+  "lever",
+  "workday",
+  "smartrecruiters",
+  "workable",
+  "icims",
+  "jobvite",
+  "bamboohr",
+  "recruitee",
+  "teamtailor",
+  "taleo",
+  "brassring",
+  "myworkdayjobs",
+  "successfactors"
+];
+
+function looksLikeAtsPlatform(value: string): boolean {
+  const clean = value.toLowerCase().replace(/\s+/g, "");
+  return ATS_DOMAIN_MARKERS.some((marker) => clean.includes(marker));
+}
+
+function isGoodCompanyName(value: string): boolean {
+  const clean = normalizeCompanyCandidate(value);
+  if (!clean) {
+    return false;
+  }
+
+  if (/^(company|employer|organization|hiring team|team)$/i.test(clean)) {
+    return false;
+  }
+
+  if (looksLikeAtsPlatform(clean)) {
+    return false;
+  }
+
+  const roleTerms =
+    /\b(intern|engineer|developer|manager|director|analyst|specialist|scientist|position|role|job|software|backend|frontend|full[-\s]?stack|security|data)\b/i;
+  const metaTerms = /\b(responsib|requirement|about|overview|qualification|benefit|salary|location)\b/i;
+  return !roleTerms.test(clean) && !metaTerms.test(clean) && clean.length <= 60;
+}
+
+function companyFromUrl(url: string): string | null {
+  if (!url) {
     return null;
   }
 
-  return parts.slice(0, 3).map(titleCaseWord).join(" ");
+  try {
+    const hostname = new URL(url).hostname.replace(/^www\./i, "");
+    if (looksLikeAtsPlatform(hostname)) {
+      return null;
+    }
+
+    const parts = hostname.split(".").filter(Boolean);
+    if (parts.length === 0) {
+      return null;
+    }
+
+    const base = parts.length >= 2 ? parts[parts.length - 2] : parts[0];
+    const candidate = titleCase(base.replace(/[-_]+/g, " "));
+    return isGoodCompanyName(candidate) ? candidate : null;
+  } catch {
+    return null;
+  }
 }
 
-function nameFromLetterSignoff(letter: string): string | null {
-  const lines = letter
-    .split("\n")
-    .map((line) => line.trim())
+function companyFromPageTitle(pageTitle: string): string | null {
+  const parts = pageTitle
+    .split(/[-|]/)
+    .map((part) => normalizeCompanyCandidate(part))
     .filter(Boolean);
 
-  for (let i = lines.length - 1; i >= 0; i -= 1) {
-    const line = lines[i];
-    if (/^(best|sincerely|regards|thank you)[,]?$|^best regards[,]?$/i.test(line) && i + 1 < lines.length) {
-      const nameLine = lines[i + 1];
-      if (/^[A-Za-z][A-Za-z\s.'-]{2,60}$/.test(nameLine)) {
-        return nameLine;
-      }
+  const ranked = [...parts].sort((a, b) => b.length - a.length);
+  for (const part of ranked) {
+    if (isGoodCompanyName(part)) {
+      return part;
     }
   }
 
   return null;
 }
 
-function extractCandidateName(resumeText: string, letter?: string): string {
-  const lines = resumeText
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .slice(0, 5);
-
-  for (const line of lines) {
-    const cleaned = line.replace(/\s+/g, " ");
-    const directMatch = cleaned.match(/^[A-Za-z][A-Za-z\s.'-]{2,60}$/);
-    if (directMatch) {
-      return directMatch[0].trim();
-    }
-
-    const prefixMatch = cleaned.match(/^([A-Za-z][A-Za-z\s.'-]{2,60})\b(?:\s+[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}|\s+\+?\d)/);
-    if (prefixMatch?.[1]) {
-      return prefixMatch[1].trim();
-    }
-  }
-
-  const emailBased = nameFromEmail(resumeText);
-  if (emailBased) {
-    return emailBased;
-  }
-
-  if (letter) {
-    const signoffName = nameFromLetterSignoff(letter);
-    if (signoffName) {
-      return signoffName;
-    }
-  }
-
-  return "Candidate";
+function getCurrentDateLine(): string {
+  return new Date().toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric"
+  });
 }
 
 function extractCompanyName(jobText: string, pageTitle: string): string {
@@ -433,6 +451,51 @@ function extractCompanyName(jobText: string, pageTitle: string): string {
   }
 
   return "Company";
+}
+
+function pickBestCompanyName(jobText: string, pageTitle: string, url: string): string | null {
+  const extracted = normalizeCompanyCandidate(extractCompanyName(jobText, pageTitle));
+  if (isGoodCompanyName(extracted)) {
+    return extracted;
+  }
+
+  const titleAtMatch = pageTitle.match(/\bat\s+([^\-|]{2,80})/i);
+  const fromTitle = normalizeCompanyCandidate(titleAtMatch?.[1] ?? "");
+  if (isGoodCompanyName(fromTitle)) {
+    return fromTitle;
+  }
+
+  const fromTitleParts = companyFromPageTitle(pageTitle);
+  if (fromTitleParts) {
+    return fromTitleParts;
+  }
+
+  return companyFromUrl(url);
+}
+
+function sanitizePdfLetter(letter: string, companyName: string | null): string {
+  const normalized = letter
+    .replace(/^\s*\[\s*Company\s+Address\s*\]\s*$/gim, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+
+  if (!companyName || !isGoodCompanyName(companyName)) {
+    return normalized;
+  }
+
+  const preview = normalized
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .slice(0, 10)
+    .join("\n")
+    .toLowerCase();
+
+  if (preview.includes(companyName.toLowerCase())) {
+    return normalized;
+  }
+
+  return `${companyName}\n\n${normalized}`;
 }
 
 async function requestGeneration(outputFormat: "paste" | "pdf"): Promise<string> {
@@ -539,7 +602,16 @@ async function requestHumanizedText(text: string): Promise<string> {
   return String(response.data?.text ?? "").trim();
 }
 
-function downloadPdf(letter: string, candidateName: string, companyName: string): void {
+function buildPdfFilename(companyName: string | null): string {
+  const safeCompany = sanitizeFilenamePart(companyName ?? "");
+  if (safeCompany) {
+    return `Cover_Letter_${safeCompany}.pdf`;
+  }
+
+  return "Cover_Letter.pdf";
+}
+
+function downloadPdf(letter: string, companyName: string | null): void {
   const jsPdf = (window as JsPdfWindow).jspdf?.jsPDF;
   if (!jsPdf) {
     throw new Error("PDF library failed to load. Reload the extension and try again.");
@@ -552,7 +624,7 @@ function downloadPdf(letter: string, candidateName: string, companyName: string)
   const usableWidth = pageWidth - margin * 2;
   const usableHeight = pageHeight - margin * 2;
 
-  doc.setFont("helvetica", "normal");
+  doc.setFont("times", "normal");
   let fontSize = 12;
   let lines = doc.splitTextToSize(letter, usableWidth);
   let lineHeight = fontSize * 1.45;
@@ -573,9 +645,7 @@ function downloadPdf(letter: string, candidateName: string, companyName: string)
   doc.setFontSize(fontSize);
   doc.text(lines, margin, margin, { baseline: "top" });
 
-  const safeName = sanitizeFilenamePart(candidateName) || "Candidate";
-  const safeCompany = sanitizeFilenamePart(companyName) || "Company";
-  doc.save(`${safeName}_Cover_Letter_${safeCompany}.pdf`);
+  doc.save(buildPdfFilename(companyName));
 }
 
 async function generate(): Promise<void> {
@@ -605,10 +675,9 @@ async function generateAndDownloadPdf(): Promise<void> {
   setStatus("Generating formal PDF letter...");
 
   try {
-    const letter = await requestGeneration("pdf");
-    const candidateName = settings.fullName.trim() || extractCandidateName(cachedResume, letter);
-    const companyName = extractCompanyName(jobTextEl.value, lastPageTitle);
-    downloadPdf(letter, candidateName, companyName);
+    const companyName = pickBestCompanyName(jobTextEl.value, lastPageTitle, activeTabUrl);
+    const letter = sanitizePdfLetter(await requestGeneration("pdf"), companyName);
+    downloadPdf(letter, companyName);
     setStatus("PDF downloaded.");
   } finally {
     setLoading(false);
