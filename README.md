@@ -38,6 +38,18 @@ npm run build
 4. Copy the generated cover letter, or click **Get PDF** for a formal one-page PDF business-letter version.
 5. Use the **Question Answer** tab to generate a one-paragraph answer for application prompts based on the same resume + job description context.
 
+## Keyboard Access
+
+- Open popup shortcut suggestion: `Ctrl+Shift+Y` (Windows/Linux) or `Command+Shift+Y` (Mac).
+- You can customize this in `chrome://extensions/shortcuts` (some combinations may be unavailable on your system).
+- In popup (when focus is not in an input field):
+  - `e` extract from page
+  - `g` generate (cover letter or answer, based on active tab)
+  - `y` copy (cover letter or answer, based on active tab)
+  - `1` cover letter tab
+  - `2` question answer tab
+  - `Esc` close popup
+
 ## Notes
 
 - No OAuth is used.

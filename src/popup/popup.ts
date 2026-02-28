@@ -42,6 +42,7 @@ const answerPanel = document.querySelector<HTMLElement>("#answerPanel");
 let cachedResume = "";
 let settings: AppSettings;
 let lastPageTitle = "";
+let activeTab: "cover" | "answer" = "cover";
 
 function setStatus(text: string, isError = false): void {
   if (!statusEl) {
@@ -79,11 +80,80 @@ function setActiveTab(tab: "cover" | "answer"): void {
     return;
   }
 
+  activeTab = tab;
   const coverActive = tab === "cover";
   coverTabBtn.classList.toggle("active", coverActive);
   answerTabBtn.classList.toggle("active", !coverActive);
   coverPanel.classList.toggle("active", coverActive);
   answerPanel.classList.toggle("active", !coverActive);
+}
+
+function isEditableTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) {
+    return false;
+  }
+
+  if (target.isContentEditable) {
+    return true;
+  }
+
+  const tag = target.tagName.toLowerCase();
+  return tag === "input" || tag === "textarea" || tag === "select";
+}
+
+function bindKeyboardShortcuts(): void {
+  document.addEventListener("keydown", (event) => {
+    if (event.defaultPrevented || event.repeat) {
+      return;
+    }
+    if (event.ctrlKey || event.metaKey || event.altKey) {
+      return;
+    }
+
+    if (event.key === "Escape") {
+      event.preventDefault();
+      window.close();
+      return;
+    }
+
+    if (isEditableTarget(event.target)) {
+      return;
+    }
+
+    const key = event.key.toLowerCase();
+    if (key === "1") {
+      event.preventDefault();
+      setActiveTab("cover");
+      return;
+    }
+    if (key === "2") {
+      event.preventDefault();
+      setActiveTab("answer");
+      return;
+    }
+    if (key === "e") {
+      event.preventDefault();
+      extractBtn?.click();
+      return;
+    }
+    if (key === "g") {
+      event.preventDefault();
+      if (activeTab === "answer") {
+        generateAnswerBtn?.click();
+      } else {
+        generateBtn?.click();
+      }
+      return;
+    }
+    if (key === "y") {
+      event.preventDefault();
+      if (activeTab === "answer") {
+        copyAnswerBtn?.click();
+      } else {
+        copyBtn?.click();
+      }
+    }
+  });
 }
 
 async function extractFromActiveTab(): Promise<ExtractedJob> {
@@ -527,6 +597,7 @@ async function init(): Promise<void> {
   copyBtn.disabled = true;
   copyAnswerBtn.disabled = true;
   setActiveTab("cover");
+  bindKeyboardShortcuts();
 
   coverTabBtn.addEventListener("click", () => {
     setActiveTab("cover");
