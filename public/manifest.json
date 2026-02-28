@@ -6,7 +6,8 @@
   "permissions": ["storage", "activeTab", "scripting"],
   "host_permissions": [
     "https://api.openai.com/*",
-    "https://api.anthropic.com/*"
+    "https://api.anthropic.com/*",
+    "https://www.humanizeai.io/*"
   ],
   "action": {
     "default_title": "AI Cover Letter Helper",

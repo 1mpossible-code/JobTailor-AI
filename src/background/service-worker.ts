@@ -10,6 +10,8 @@ import { getSettings } from "../lib/storage.js";
 import type {
   GenerationRequest,
   GenerationResponse,
+  HumanizeTextRequest,
+  HumanizeTextResponse,
   Provider,
   QuestionAnswerRequest,
   QuestionAnswerResponse
@@ -25,10 +27,62 @@ interface GenerateAnswerMessage {
   payload: Omit<QuestionAnswerRequest, "resumeText" | "model"> & { model?: string; resumeText?: string };
 }
 
-type RuntimeMessage = GenerateMessage | GenerateAnswerMessage;
+interface HumanizeMessage {
+  type: "GENERATE_HUMANIZED_TEXT";
+  payload: HumanizeTextRequest;
+}
+
+type RuntimeMessage = GenerateMessage | GenerateAnswerMessage | HumanizeMessage;
 
 function stripEmDashes(text: string): string {
   return text.replace(/[—–]/g, "-");
+}
+
+function createHumanizeSessionId(): string {
+  const alphabet = "abcdefghijklmnopqrstuvwxyz0123456789";
+  const bytes = new Uint8Array(26);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => alphabet[b % alphabet.length]).join("");
+}
+
+async function humanizeText(inputText: string): Promise<string> {
+  const params = new URLSearchParams();
+  params.set("aiText", inputText);
+  params.set("captchaInput", "");
+  params.set("mode", "BASIC");
+  params.set("readability", "Standard");
+  params.set("freeze_keywords", "");
+
+  const response = await fetch("https://www.humanizeai.io/humanize_adv.php", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+      Cookie: `clickCount=1; humanizeai_session=${createHumanizeSessionId()}`
+    },
+    body: params.toString()
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+    throw new Error(`Humanize request failed (${response.status}): ${errorBody}`);
+  }
+
+  const payload = (await response.json()) as {
+    message?: string;
+    message2?: string;
+    error?: string;
+  };
+
+  if (String(payload.error ?? "No") !== "No") {
+    throw new Error(`Humanize API returned error: ${String(payload.error ?? "Unknown error")}`);
+  }
+
+  const firstVersion = String(payload.message ?? "").trim();
+  if (!firstVersion) {
+    throw new Error("Humanize API returned an empty primary response.");
+  }
+
+  return stripEmDashes(firstVersion);
 }
 
 function assertInput(req: GenerationRequest): void {
@@ -83,12 +137,27 @@ async function generateAnswer(req: QuestionAnswerRequest, apiKey: string, provid
 }
 
 chrome.runtime.onMessage.addListener((message: RuntimeMessage, _sender, sendResponse) => {
-  if (message?.type !== "GENERATE_COVER_LETTER" && message?.type !== "GENERATE_QUESTION_ANSWER") {
+  if (
+    message?.type !== "GENERATE_COVER_LETTER" &&
+    message?.type !== "GENERATE_QUESTION_ANSWER" &&
+    message?.type !== "GENERATE_HUMANIZED_TEXT"
+  ) {
     return;
   }
 
   (async () => {
     try {
+      if (message.type === "GENERATE_HUMANIZED_TEXT") {
+        const sourceText = message.payload.text.trim();
+        if (!sourceText) {
+          throw new Error("Nothing to humanize.");
+        }
+        const text = await humanizeText(sourceText);
+        const response: HumanizeTextResponse = { text };
+        sendResponse({ ok: true, data: response });
+        return;
+      }
+
       const settings = await getSettings();
       const provider = message.payload.provider ?? settings.provider;
       const apiKey = settings.apiKeys[provider]?.trim();

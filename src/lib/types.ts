@@ -40,3 +40,11 @@ export interface QuestionAnswerRequest {
 export interface QuestionAnswerResponse {
   answer: string;
 }
+
+export interface HumanizeTextRequest {
+  text: string;
+}
+
+export interface HumanizeTextResponse {
+  text: string;
+}

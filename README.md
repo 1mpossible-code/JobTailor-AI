@@ -46,6 +46,7 @@ npm run build
   - `e` extract from page
   - `g` generate (cover letter or answer, based on active tab)
   - `y` copy (cover letter or answer, based on active tab)
+  - `h` humanize answer (Question Answer tab)
   - `1` cover letter tab
   - `2` question answer tab
   - `Esc` close popup

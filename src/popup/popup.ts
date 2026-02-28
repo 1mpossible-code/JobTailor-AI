@@ -33,6 +33,7 @@ const regenerateBtn = document.querySelector<HTMLButtonElement>("#regenerateBtn"
 const generateAnswerBtn = document.querySelector<HTMLButtonElement>("#generateAnswerBtn");
 const copyBtn = document.querySelector<HTMLButtonElement>("#copyBtn");
 const copyAnswerBtn = document.querySelector<HTMLButtonElement>("#copyAnswerBtn");
+const humanizeAnswerBtn = document.querySelector<HTMLButtonElement>("#humanizeAnswerBtn");
 const downloadPdfBtn = document.querySelector<HTMLButtonElement>("#downloadPdfBtn");
 const coverTabBtn = document.querySelector<HTMLButtonElement>("#coverTabBtn");
 const answerTabBtn = document.querySelector<HTMLButtonElement>("#answerTabBtn");
@@ -53,10 +54,10 @@ function setStatus(text: string, isError = false): void {
   statusEl.classList.toggle("error", isError);
 }
 
-type LoadingContext = "extract" | "generate" | "pdf" | "answer";
+type LoadingContext = "extract" | "generate" | "pdf" | "answer" | "humanize-answer";
 
 function setLoading(isLoading: boolean, context?: LoadingContext): void {
-  [extractBtn, generateBtn, regenerateBtn, downloadPdfBtn, generateAnswerBtn, copyAnswerBtn].forEach((button) => {
+  [extractBtn, generateBtn, regenerateBtn, downloadPdfBtn, generateAnswerBtn, copyAnswerBtn, humanizeAnswerBtn].forEach((button) => {
     if (button) {
       button.disabled = isLoading;
     }
@@ -71,7 +72,11 @@ function setLoading(isLoading: boolean, context?: LoadingContext): void {
   }
 
   if (generateAnswerBtn) {
-    generateAnswerBtn.textContent = isLoading && context === "answer" ? "Generating..." : "Generate answer";
+    generateAnswerBtn.textContent = isLoading && context === "answer" ? "Generating..." : "Generate";
+  }
+
+  if (humanizeAnswerBtn) {
+    humanizeAnswerBtn.textContent = isLoading && context === "humanize-answer" ? "Humanizing..." : "Humanize";
   }
 }
 
@@ -151,6 +156,15 @@ function bindKeyboardShortcuts(): void {
         copyAnswerBtn?.click();
       } else {
         copyBtn?.click();
+      }
+      return;
+    }
+    if (key === "h") {
+      event.preventDefault();
+      if (activeTab === "answer") {
+        humanizeAnswerBtn?.click();
+      } else {
+        setStatus("Humanize is available in Question Answer tab.");
       }
     }
   });
@@ -468,6 +482,21 @@ async function requestQuestionAnswer(): Promise<string> {
   return String(response.data?.answer ?? "").trim();
 }
 
+async function requestHumanizedText(text: string): Promise<string> {
+  const response = await chrome.runtime.sendMessage({
+    type: "GENERATE_HUMANIZED_TEXT",
+    payload: {
+      text
+    }
+  });
+
+  if (!response?.ok) {
+    throw new Error(String(response?.error ?? "Humanize request failed."));
+  }
+
+  return String(response.data?.text ?? "").trim();
+}
+
 function downloadPdf(letter: string, candidateName: string, companyName: string): void {
   const jsPdf = (window as JsPdfWindow).jspdf?.jsPDF;
   if (!jsPdf) {
@@ -564,6 +593,29 @@ async function generateQuestionAnswer(): Promise<void> {
   }
 }
 
+async function humanizeAnswer(): Promise<void> {
+  if (!answerOutputEl) {
+    return;
+  }
+
+  const source = answerOutputEl.value.trim();
+  if (!source) {
+    throw new Error("Generate an answer first.");
+  }
+
+  setLoading(true, "humanize-answer");
+  setStatus("Humanizing answer...");
+
+  try {
+    const text = await requestHumanizedText(source);
+    answerOutputEl.value = text;
+    copyAnswerBtn && (copyAnswerBtn.disabled = !text);
+    setStatus("Answer humanized.");
+  } finally {
+    setLoading(false);
+  }
+}
+
 async function init(): Promise<void> {
   if (
     !providerEl ||
@@ -579,6 +631,7 @@ async function init(): Promise<void> {
     !generateAnswerBtn ||
     !copyBtn ||
     !copyAnswerBtn ||
+    !humanizeAnswerBtn ||
     !downloadPdfBtn ||
     !coverTabBtn ||
     !answerTabBtn ||
@@ -679,6 +732,16 @@ async function init(): Promise<void> {
     }
     await navigator.clipboard.writeText(text);
     setStatus("Answer copied to clipboard.");
+  });
+
+  humanizeAnswerBtn.addEventListener("click", async () => {
+    try {
+      await humanizeAnswer();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Humanize failed.";
+      setLoading(false);
+      setStatus(message, true);
+    }
   });
 }
 
