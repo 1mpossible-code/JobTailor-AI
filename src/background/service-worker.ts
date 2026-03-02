@@ -7,7 +7,7 @@ import {
   buildSystemPrompt,
   buildUserPrompt
 } from "../lib/prompt.js";
-import { clearJobDraft, getSettings } from "../lib/storage.js";
+import { clearPopupDraft, getSettings } from "../lib/storage.js";
 import type {
   GenerationRequest,
   GenerationResponse,
@@ -48,7 +48,7 @@ function normalizeProvider(value: unknown, fallback: Provider): Provider {
 }
 
 chrome.tabs.onRemoved.addListener((tabId) => {
-  void clearJobDraft(tabId);
+  void clearPopupDraft(tabId);
 });
 
 function stripEmDashes(text: string): string {

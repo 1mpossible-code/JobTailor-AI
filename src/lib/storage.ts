@@ -1,12 +1,12 @@
-import type { AppSettings, JobDraft } from "./types.js";
+import type { AppSettings, PopupDraft } from "./types.js";
 
 const SETTINGS_KEY = "appSettings";
 const LOCAL_RESUME_KEY = "resumeText";
 const SESSION_RESUME_KEY = "resumeText";
-const JOB_DRAFT_KEY_PREFIX = "jobDraft:";
+const POPUP_DRAFT_KEY_PREFIX = "popupDraft:";
 
-function getJobDraftKey(tabId: number): string {
-  return `${JOB_DRAFT_KEY_PREFIX}${tabId}`;
+function getPopupDraftKey(tabId: number): string {
+  return `${POPUP_DRAFT_KEY_PREFIX}${tabId}`;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -92,39 +92,58 @@ export async function clearResumeText(): Promise<void> {
   await chrome.storage.session.remove(SESSION_RESUME_KEY);
 }
 
-export async function getJobDraft(tabId: number): Promise<JobDraft | null> {
-  const key = getJobDraftKey(tabId);
+export async function getPopupDraft(tabId: number): Promise<PopupDraft | null> {
+  const key = getPopupDraftKey(tabId);
   const result = await chrome.storage.session.get(key);
-  const raw = result[key] as Partial<JobDraft> | undefined;
+  const raw = result[key] as Partial<PopupDraft> | undefined;
 
   if (!raw || typeof raw !== "object") {
     return null;
   }
 
   const jobText = String(raw.jobText ?? "").trim();
-  if (!jobText) {
+  const provider = raw.provider;
+  const tone = raw.tone;
+  const length = raw.length;
+  const activeTab = raw.activeTab;
+
+  if (!provider || !tone || !length || !activeTab) {
     return null;
   }
 
   return {
     jobText,
     pageTitle: String(raw.pageTitle ?? ""),
-    url: String(raw.url ?? "")
+    url: String(raw.url ?? ""),
+    provider,
+    tone,
+    length,
+    output: String(raw.output ?? ""),
+    questionInput: String(raw.questionInput ?? ""),
+    answerOutput: String(raw.answerOutput ?? ""),
+    activeTab
   };
 }
 
-export async function saveJobDraft(tabId: number, draft: JobDraft): Promise<void> {
-  const key = getJobDraftKey(tabId);
+export async function savePopupDraft(tabId: number, draft: PopupDraft): Promise<void> {
+  const key = getPopupDraftKey(tabId);
   await chrome.storage.session.set({
     [key]: {
       jobText: draft.jobText.trim(),
       pageTitle: draft.pageTitle,
-      url: draft.url
+      url: draft.url,
+      provider: draft.provider,
+      tone: draft.tone,
+      length: draft.length,
+      output: draft.output,
+      questionInput: draft.questionInput,
+      answerOutput: draft.answerOutput,
+      activeTab: draft.activeTab
     }
   });
 }
 
-export async function clearJobDraft(tabId: number): Promise<void> {
-  const key = getJobDraftKey(tabId);
+export async function clearPopupDraft(tabId: number): Promise<void> {
+  const key = getPopupDraftKey(tabId);
   await chrome.storage.session.remove(key);
 }

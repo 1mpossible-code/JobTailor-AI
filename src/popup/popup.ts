@@ -1,5 +1,5 @@
-import { clearJobDraft, getJobDraft, getResumeText, getSettings, saveJobDraft } from "../lib/storage.js";
-import type { AppSettings, LetterLength, Provider, Tone } from "../lib/types.js";
+import { clearPopupDraft, getPopupDraft, getResumeText, getSettings, savePopupDraft, saveSettings } from "../lib/storage.js";
+import type { AppSettings, LetterLength, PopupDraft, Provider, Tone } from "../lib/types.js";
 
 interface ExtractedJob {
   jobText: string;
@@ -125,6 +125,7 @@ function bindKeyboardShortcuts(): void {
 
         questionInputEl.value = clipboardText;
         questionInputEl.focus();
+        scheduleDraftSave();
         setStatus("Question inserted from clipboard.");
       } catch {
         setStatus("Clipboard read blocked. Use paste (Cmd/Ctrl+V).", true);
@@ -157,11 +158,13 @@ function bindKeyboardShortcuts(): void {
     if (key === "1") {
       event.preventDefault();
       setActiveTab("cover");
+      scheduleDraftSave();
       return;
     }
     if (key === "2") {
       event.preventDefault();
       setActiveTab("answer");
+      scheduleDraftSave();
       return;
     }
     if (key === "e") {
@@ -290,31 +293,56 @@ async function loadActiveTabContext(): Promise<void> {
   lastPageTitle = String(tab.title ?? "");
 }
 
-async function persistJobDraft(jobText: string, pageTitle: string, url: string): Promise<void> {
+function buildPopupDraft(): PopupDraft | null {
+  if (!providerEl || !toneEl || !lengthEl || !jobTextEl || !outputEl || !questionInputEl || !answerOutputEl) {
+    return null;
+  }
+
+  return {
+    jobText: jobTextEl.value,
+    pageTitle: lastPageTitle,
+    url: activeTabUrl,
+    provider: providerEl.value as Provider,
+    tone: toneEl.value as Tone,
+    length: lengthEl.value as LetterLength,
+    output: outputEl.value,
+    questionInput: questionInputEl.value,
+    answerOutput: answerOutputEl.value,
+    activeTab
+  };
+}
+
+async function persistPopupDraft(): Promise<void> {
   if (activeTabId === null) {
     return;
   }
 
-  const trimmed = jobText.trim();
-  if (!trimmed) {
-    await clearJobDraft(activeTabId);
+  const draft = buildPopupDraft();
+  if (!draft) {
     return;
   }
 
-  await saveJobDraft(activeTabId, {
-    jobText: trimmed,
-    pageTitle,
-    url
-  });
+  const hasAnyInput =
+    draft.jobText.trim() ||
+    draft.output.trim() ||
+    draft.questionInput.trim() ||
+    draft.answerOutput.trim();
+
+  if (!hasAnyInput) {
+    await clearPopupDraft(activeTabId);
+    return;
+  }
+
+  await savePopupDraft(activeTabId, draft);
 }
 
-function scheduleDraftSave(jobText: string, pageTitle: string, url: string): void {
+function scheduleDraftSave(): void {
   if (draftSaveTimeout !== undefined) {
     window.clearTimeout(draftSaveTimeout);
   }
 
   draftSaveTimeout = window.setTimeout(() => {
-    void persistJobDraft(jobText, pageTitle, url);
+    void persistPopupDraft();
   }, 300);
 }
 
@@ -510,6 +538,10 @@ async function requestGeneration(outputFormat: "paste" | "pdf"): Promise<string>
 
   settings = await getSettings();
   cachedResume = await getResumeText(settings);
+  providerEl.value = settings.provider;
+  toneEl.value = settings.tone;
+  lengthEl.value = settings.length;
+  setActiveTab("cover");
 
   const jobText = jobTextEl.value.trim();
   if (!jobText) {
@@ -660,6 +692,7 @@ async function generate(): Promise<void> {
     const letter = await requestGeneration("paste");
     outputEl.value = letter;
     copyBtn && (copyBtn.disabled = !letter.trim());
+    scheduleDraftSave();
     setStatus("Done.");
   } finally {
     setLoading(false);
@@ -697,6 +730,7 @@ async function generateQuestionAnswer(): Promise<void> {
     if (copyAnswerBtn) {
       copyAnswerBtn.disabled = !answer;
     }
+    scheduleDraftSave();
     setStatus("Answer ready.");
   } finally {
     setLoading(false);
@@ -720,6 +754,7 @@ async function humanizeAnswer(): Promise<void> {
     const text = await requestHumanizedText(source);
     answerOutputEl.value = text;
     copyAnswerBtn && (copyAnswerBtn.disabled = !text);
+    scheduleDraftSave();
     setStatus("Answer humanized.");
   } finally {
     setLoading(false);
@@ -753,44 +788,81 @@ async function init(): Promise<void> {
 
   settings = await getSettings();
   cachedResume = await getResumeText(settings);
+  providerEl.value = settings.provider;
+  toneEl.value = settings.tone;
+  lengthEl.value = settings.length;
 
   try {
     await loadActiveTabContext();
 
     if (activeTabId !== null) {
-      const cachedJobDraft = await getJobDraft(activeTabId);
-      if (cachedJobDraft?.jobText) {
-        jobTextEl.value = cachedJobDraft.jobText;
-        lastPageTitle = cachedJobDraft.pageTitle || lastPageTitle;
-        activeTabUrl = cachedJobDraft.url || activeTabUrl;
+      const cachedPopupDraft = await getPopupDraft(activeTabId);
+      if (cachedPopupDraft) {
+        jobTextEl.value = cachedPopupDraft.jobText;
+        outputEl.value = cachedPopupDraft.output;
+        questionInputEl.value = cachedPopupDraft.questionInput;
+        answerOutputEl.value = cachedPopupDraft.answerOutput;
+        lastPageTitle = cachedPopupDraft.pageTitle || lastPageTitle;
+        activeTabUrl = cachedPopupDraft.url || activeTabUrl;
+        setActiveTab(cachedPopupDraft.activeTab);
       }
     }
   } catch {
     activeTabId = null;
   }
 
-  providerEl.value = settings.provider;
-  toneEl.value = settings.tone;
-  lengthEl.value = settings.length;
-  copyBtn.disabled = true;
-  copyAnswerBtn.disabled = true;
-  setActiveTab("cover");
+  copyBtn.disabled = !outputEl.value.trim();
+  copyAnswerBtn.disabled = !answerOutputEl.value.trim();
   bindKeyboardShortcuts();
 
   jobTextEl.addEventListener("input", () => {
-    scheduleDraftSave(jobTextEl.value, lastPageTitle, activeTabUrl);
+    scheduleDraftSave();
   });
 
   jobTextEl.addEventListener("blur", () => {
-    void persistJobDraft(jobTextEl.value, lastPageTitle, activeTabUrl);
+    void persistPopupDraft();
+  });
+
+  outputEl.addEventListener("input", () => {
+    copyBtn.disabled = !outputEl.value.trim();
+    scheduleDraftSave();
+  });
+
+  questionInputEl.addEventListener("input", () => {
+    scheduleDraftSave();
+  });
+
+  answerOutputEl.addEventListener("input", () => {
+    copyAnswerBtn.disabled = !answerOutputEl.value.trim();
+    scheduleDraftSave();
+  });
+
+  providerEl.addEventListener("change", () => {
+    settings.provider = providerEl.value as Provider;
+    void saveSettings({ provider: settings.provider });
+    scheduleDraftSave();
+  });
+
+  toneEl.addEventListener("change", () => {
+    settings.tone = toneEl.value as Tone;
+    void saveSettings({ tone: settings.tone });
+    scheduleDraftSave();
+  });
+
+  lengthEl.addEventListener("change", () => {
+    settings.length = lengthEl.value as LetterLength;
+    void saveSettings({ length: settings.length });
+    scheduleDraftSave();
   });
 
   coverTabBtn.addEventListener("click", () => {
     setActiveTab("cover");
+    scheduleDraftSave();
   });
 
   answerTabBtn.addEventListener("click", () => {
     setActiveTab("answer");
+    scheduleDraftSave();
   });
 
   extractBtn.addEventListener("click", async () => {
@@ -801,7 +873,7 @@ async function init(): Promise<void> {
       jobTextEl.value = extracted.jobText;
       lastPageTitle = extracted.pageTitle;
       activeTabUrl = extracted.url;
-      await persistJobDraft(extracted.jobText, extracted.pageTitle, extracted.url);
+      await persistPopupDraft();
       setStatus("Job description extracted.");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to extract job description.";

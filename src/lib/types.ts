@@ -54,3 +54,16 @@ export interface JobDraft {
   pageTitle: string;
   url: string;
 }
+
+export interface PopupDraft {
+  jobText: string;
+  pageTitle: string;
+  url: string;
+  provider: Provider;
+  tone: Tone;
+  length: LetterLength;
+  output: string;
+  questionInput: string;
+  answerOutput: string;
+  activeTab: "cover" | "answer";
+}
