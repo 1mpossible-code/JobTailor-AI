@@ -4,7 +4,7 @@ Client-only Chrome extension that:
 
 - extracts a job description from the current page,
 - remembers your resume text locally,
-- generates tailored cover letters with either Anthropic or OpenAI API keys.
+- generates tailored cover letters with Anthropic, OpenAI, or Gemini API keys.
 
 ## Setup
 
@@ -28,7 +28,7 @@ npm run build
 
 1. Open extension **Settings** and paste:
    - your resume text,
-   - Anthropic and/or OpenAI API keys,
+   - Anthropic, OpenAI, and/or Gemini API keys,
    - preferred models.
 2. Open a job posting page.
 3. In the popup:

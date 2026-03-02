@@ -1,4 +1,4 @@
-export type Provider = "anthropic" | "openai";
+export type Provider = "anthropic" | "openai" | "gemini";
 export type Tone = "professional" | "confident" | "friendly";
 export type LetterLength = "short" | "standard" | "detailed";
 

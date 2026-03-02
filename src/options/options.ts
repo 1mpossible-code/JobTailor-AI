@@ -12,8 +12,10 @@ const toneEl = document.querySelector<HTMLSelectElement>("#tone");
 const lengthEl = document.querySelector<HTMLSelectElement>("#length");
 const anthropicApiKeyEl = document.querySelector<HTMLInputElement>("#anthropicApiKey");
 const openaiApiKeyEl = document.querySelector<HTMLInputElement>("#openaiApiKey");
+const geminiApiKeyEl = document.querySelector<HTMLInputElement>("#geminiApiKey");
 const anthropicModelEl = document.querySelector<HTMLInputElement>("#anthropicModel");
 const openaiModelEl = document.querySelector<HTMLInputElement>("#openaiModel");
+const geminiModelEl = document.querySelector<HTMLInputElement>("#geminiModel");
 const fullNameEl = document.querySelector<HTMLInputElement>("#fullName");
 const resumeTextEl = document.querySelector<HTMLTextAreaElement>("#resumeText");
 const sessionOnlyResumeEl = document.querySelector<HTMLInputElement>("#sessionOnlyResume");
@@ -36,8 +38,10 @@ async function load(): Promise<void> {
     !lengthEl ||
     !anthropicApiKeyEl ||
     !openaiApiKeyEl ||
+    !geminiApiKeyEl ||
     !anthropicModelEl ||
     !openaiModelEl ||
+    !geminiModelEl ||
     !fullNameEl ||
     !resumeTextEl ||
     !sessionOnlyResumeEl
@@ -53,8 +57,10 @@ async function load(): Promise<void> {
   lengthEl.value = settings.length;
   anthropicApiKeyEl.value = settings.apiKeys.anthropic;
   openaiApiKeyEl.value = settings.apiKeys.openai;
+  geminiApiKeyEl.value = settings.apiKeys.gemini;
   anthropicModelEl.value = settings.models.anthropic;
   openaiModelEl.value = settings.models.openai;
+  geminiModelEl.value = settings.models.gemini;
   fullNameEl.value = settings.fullName;
   sessionOnlyResumeEl.checked = settings.sessionOnlyResume;
   resumeTextEl.value = resume;
@@ -67,8 +73,10 @@ async function save(): Promise<void> {
     !lengthEl ||
     !anthropicApiKeyEl ||
     !openaiApiKeyEl ||
+    !geminiApiKeyEl ||
     !anthropicModelEl ||
     !openaiModelEl ||
+    !geminiModelEl ||
     !fullNameEl ||
     !resumeTextEl ||
     !sessionOnlyResumeEl
@@ -89,11 +97,13 @@ async function save(): Promise<void> {
     sessionOnlyResume,
     apiKeys: {
       anthropic: anthropicApiKeyEl.value.trim(),
-      openai: openaiApiKeyEl.value.trim()
+      openai: openaiApiKeyEl.value.trim(),
+      gemini: geminiApiKeyEl.value.trim()
     },
     models: {
       anthropic: anthropicModelEl.value.trim() || "claude-3-5-haiku-latest",
-      openai: openaiModelEl.value.trim() || "gpt-4.1-mini"
+      openai: openaiModelEl.value.trim() || "gpt-4.1-mini",
+      gemini: geminiModelEl.value.trim() || "gemini-2.0-flash"
     }
   });
 

@@ -1,4 +1,5 @@
 import { generateWithAnthropic } from "../lib/providers/anthropic.js";
+import { generateWithGemini } from "../lib/providers/gemini.js";
 import { generateWithOpenAI } from "../lib/providers/openai.js";
 import {
   buildAnswerSystemPrompt,
@@ -33,6 +34,18 @@ interface HumanizeMessage {
 }
 
 type RuntimeMessage = GenerateMessage | GenerateAnswerMessage | HumanizeMessage;
+
+function normalizeProvider(value: unknown, fallback: Provider): Provider {
+  const candidate = String(value ?? "")
+    .trim()
+    .toLowerCase();
+
+  if (candidate === "anthropic" || candidate === "openai" || candidate === "gemini") {
+    return candidate;
+  }
+
+  return fallback;
+}
 
 chrome.tabs.onRemoved.addListener((tabId) => {
   void clearJobDraft(tabId);
@@ -102,42 +115,62 @@ async function generateLetter(req: GenerationRequest, apiKey: string, provider: 
   const systemPrompt = buildSystemPrompt();
   const userPrompt = buildUserPrompt(req);
 
-  if (provider === "anthropic") {
-    return generateWithAnthropic({
-      apiKey,
-      model: req.model,
-      systemPrompt,
-      userPrompt
-    });
+  switch (provider) {
+    case "anthropic":
+      return generateWithAnthropic({
+        apiKey,
+        model: req.model,
+        systemPrompt,
+        userPrompt
+      });
+    case "gemini":
+      return generateWithGemini({
+        apiKey,
+        model: req.model,
+        systemPrompt,
+        userPrompt
+      });
+    case "openai":
+      return generateWithOpenAI({
+        apiKey,
+        model: req.model,
+        systemPrompt,
+        userPrompt
+      });
+    default:
+      throw new Error(`Unsupported provider: ${provider}`);
   }
-
-  return generateWithOpenAI({
-    apiKey,
-    model: req.model,
-    systemPrompt,
-    userPrompt
-  });
 }
 
 async function generateAnswer(req: QuestionAnswerRequest, apiKey: string, provider: Provider): Promise<string> {
   const systemPrompt = buildAnswerSystemPrompt();
   const userPrompt = buildAnswerUserPrompt(req);
 
-  if (provider === "anthropic") {
-    return generateWithAnthropic({
-      apiKey,
-      model: req.model,
-      systemPrompt,
-      userPrompt
-    });
+  switch (provider) {
+    case "anthropic":
+      return generateWithAnthropic({
+        apiKey,
+        model: req.model,
+        systemPrompt,
+        userPrompt
+      });
+    case "gemini":
+      return generateWithGemini({
+        apiKey,
+        model: req.model,
+        systemPrompt,
+        userPrompt
+      });
+    case "openai":
+      return generateWithOpenAI({
+        apiKey,
+        model: req.model,
+        systemPrompt,
+        userPrompt
+      });
+    default:
+      throw new Error(`Unsupported provider: ${provider}`);
   }
-
-  return generateWithOpenAI({
-    apiKey,
-    model: req.model,
-    systemPrompt,
-    userPrompt
-  });
 }
 
 chrome.runtime.onMessage.addListener((message: RuntimeMessage, _sender, sendResponse) => {
@@ -163,13 +196,17 @@ chrome.runtime.onMessage.addListener((message: RuntimeMessage, _sender, sendResp
       }
 
       const settings = await getSettings();
-      const provider = message.payload.provider ?? settings.provider;
+      const provider = normalizeProvider(message.payload.provider, settings.provider);
       const apiKey = settings.apiKeys[provider]?.trim();
       const model = (message.payload.model ?? settings.models[provider]).trim();
       const resumeText = (message.payload.resumeText ?? "").trim();
 
       if (!apiKey) {
         throw new Error(`Missing ${provider} API key. Add it in Settings.`);
+      }
+
+      if (provider === "openai" && /^AIza[\w-]+$/.test(apiKey)) {
+        throw new Error("OpenAI key looks invalid (it appears to be a Gemini key). Select Gemini provider or move this key to Gemini settings.");
       }
 
       if (message.type === "GENERATE_COVER_LETTER") {

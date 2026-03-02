@@ -33,6 +33,7 @@
         <select id="provider">
           <option value="anthropic">Anthropic</option>
           <option value="openai">OpenAI</option>
+          <option value="gemini">Gemini</option>
         </select>
 
         <label for="anthropicApiKey">Anthropic API key</label>
@@ -41,11 +42,17 @@
         <label for="openaiApiKey">OpenAI API key</label>
         <input id="openaiApiKey" type="password" autocomplete="off" placeholder="sk-..." />
 
+        <label for="geminiApiKey">Gemini API key</label>
+        <input id="geminiApiKey" type="password" autocomplete="off" placeholder="AIza..." />
+
         <label for="anthropicModel">Anthropic model</label>
         <input id="anthropicModel" type="text" placeholder="claude-3-5-haiku-latest" />
 
         <label for="openaiModel">OpenAI model</label>
         <input id="openaiModel" type="text" placeholder="gpt-4.1-mini" />
+
+        <label for="geminiModel">Gemini model</label>
+        <input id="geminiModel" type="text" placeholder="gemini-2.0-flash" />
       </section>
 
       <section>
