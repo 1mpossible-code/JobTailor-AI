@@ -110,6 +110,31 @@ function isEditableTarget(target: EventTarget | null): boolean {
 }
 
 function bindKeyboardShortcuts(): void {
+  const handlePShortcut = async (): Promise<void> => {
+    if (activeTab === "answer") {
+      if (!questionInputEl) {
+        return;
+      }
+
+      try {
+        const clipboardText = (await navigator.clipboard.readText()).trim();
+        if (!clipboardText) {
+          setStatus("Clipboard is empty.", true);
+          return;
+        }
+
+        questionInputEl.value = clipboardText;
+        questionInputEl.focus();
+        setStatus("Question inserted from clipboard.");
+      } catch {
+        setStatus("Clipboard read blocked. Use paste (Cmd/Ctrl+V).", true);
+      }
+      return;
+    }
+
+    downloadPdfBtn?.click();
+  };
+
   document.addEventListener("keydown", (event) => {
     if (event.defaultPrevented || event.repeat) {
       return;
@@ -169,6 +194,11 @@ function bindKeyboardShortcuts(): void {
       } else {
         setStatus("Humanize is available in Question Answer tab.");
       }
+      return;
+    }
+    if (key === "p") {
+      event.preventDefault();
+      void handlePShortcut();
     }
   });
 }
